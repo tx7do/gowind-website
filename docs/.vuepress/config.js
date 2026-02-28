@@ -108,18 +108,18 @@ export default defineUserConfig({
                 },
             },
         }),
-        markdownMathPlugin({
-            // 选项
-        }),
+        // markdownMathPlugin({
+        //     // 选项
+        // }),
         googleAnalyticsPlugin({
             id: 'G-133XLX9P1R',
         }),
-        componentsPlugin({
-            // 插件选项
-        }),
-        searchConsolePlugin({
-            // options ...
-        }),
+        // componentsPlugin({
+        //     // 插件选项
+        // }),
+        // searchConsolePlugin({
+        //     // options ...
+        // }),
     ],
 
     bundler: viteBundler(),

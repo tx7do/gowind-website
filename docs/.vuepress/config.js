@@ -5,7 +5,6 @@ import {viteBundler} from '@vuepress/bundler-vite'
 import {markdownMathPlugin} from '@vuepress/plugin-markdown-math'
 import {googleAnalyticsPlugin} from '@vuepress/plugin-google-analytics'
 import {searchPlugin} from "@vuepress/plugin-search";
-import {copyCodePlugin} from "@vuepress/plugin-copy-code";
 import {componentsPlugin} from "vuepress-plugin-components";
 import {searchConsolePlugin} from "vuepress-plugin-china-search-console";
 
@@ -96,9 +95,9 @@ export default defineUserConfig({
 
     // 插件配置（可选，增强功能）
     plugins: [
-        copyCodePlugin({
-            // options
-        }),
+        // copyCodePlugin({
+        //     // options
+        // }),
         searchPlugin({
             locales: {
                 '/': {

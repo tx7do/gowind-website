@@ -447,8 +447,8 @@ A: 是的，支持设置关键指标告警和通知。
 
 ## 十、获取帮助
 
-- 📖 [快速开始指南](/get-started.md)
-- 📧 邮件：contact@gowind.cloud
+- 📖 [快速开始指南](/guide/getting-started.md)
+- 📧 邮件：<yanglinbo@gmail.com>
 - 💬 讨论：[GitHub Discussions](https://github.com/tx7do/go-wind-uba/discussions)
 - 🐛 反馈：[GitHub Issues](https://github.com/tx7do/go-wind-uba/issues)
 

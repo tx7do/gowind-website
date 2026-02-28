@@ -56,8 +56,8 @@ A:
 
 A:
 
-1. 下载并安装 Go（https://go.dev/dl/）
-2. 下载并安装 Node.js（https://nodejs.org/）
+1. 下载并安装 Go（<https://go.dev/dl/>）
+2. 下载并安装 Node.js（<https://nodejs.org/>）
 3. 使用 Chocolatey 安装 Docker（可选）：
    ```powershell
    choco install golang nodejs docker-desktop
@@ -640,22 +640,22 @@ golangci-lint run
 
 A:
 
-- 官方文档：https://gowind.cloud
-- GitHub Wiki：https://github.com/tx7do/go-wind-admin/wiki
-- API 文档：https://api.demo.admin.gowind.cloud/docs/
+- 官方文档：<https://gowind.cloud>
+- GitHub Wiki：<https://github.com/tx7do/go-wind-admin/wiki>
+- API 文档：<https://api.demo.admin.gowind.cloud/docs/>
 
 ### Q: 如何获得技术支持？
 
 A:
 
-- 📧 邮件：contact@gowind.cloud
-- 💬 GitHub Discussions：https://github.com/tx7do/go-wind-admin/discussions
-- 🐛 Bug 反馈：https://github.com/tx7do/go-wind-admin/issues
-- 📖 文档讨论：https://github.com/tx7do/gowind-website/issues
+- 📧 邮件：<yanglinbo@gmail.com>
+- 💬 GitHub Discussions：<https://github.com/tx7do/go-wind-admin/discussions>
+- 🐛 Bug 反馈：<https://github.com/tx7do/go-wind-admin/issues>
+- 📖 文档讨论：<https://github.com/tx7do/gowind-website/issues>
 
 ### Q: 项目的开发进度如何？
 
-A: 关注 GitHub Project 面板：https://github.com/tx7do/go-wind-admin/projects
+A: 关注 GitHub Project 面板：<https://github.com/tx7do/go-wind-admin/projects>
 
 ### Q: 是否有企业级支持？
 
@@ -691,11 +691,10 @@ A:
 
 如果您的问题未在本文档中列出，欢迎：
 
-1. 📚 查看 [快速开始指南](/get-started.md)
+1. 📚 查看 [快速开始指南](/guide/getting-started.md)
 2. 📖 阅读 [产品文档](/admin/intro.md)
 3. 💬 提问：[GitHub Discussions](https://github.com/tx7do/go-wind-admin/discussions)
-4. 📧 邮件反馈：contact@gowind.cloud
+4. 📧 邮件反馈：<yanglinbo@gmail.com>
 5. 🐛 报告 Bug：[GitHub Issues](https://github.com/tx7do/go-wind-admin/issues)
 
 感谢您的使用和支持！
-

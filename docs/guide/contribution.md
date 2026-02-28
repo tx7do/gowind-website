@@ -714,7 +714,7 @@ pnpm format     # 格式化代码
 
 项目维护者有责任阐明可接受行为的标准，并对不可接受的行为采取适当和公平的纠正措施。
 
-对于违反本行为准则的行为，可以通过联系项目团队（contact@gowind.cloud）报告。
+对于违反本行为准则的行为，可以通过联系项目团队（<yanglinbo@gmail.com>）报告。
 
 ---
 
@@ -746,7 +746,7 @@ A: 可以，但建议定期推送。如果提交历史过于冗长，我们可�
 
 如果您有任何疑问或需要帮助：
 
-- 📧 邮件：contact@gowind.cloud
+- 📧 邮件：<yanglinbo@gmail.com>
 - 💬 讨论：[GitHub Discussions](https://github.com/tx7do/go-wind-admin/discussions)
 - 📖 文档：[官方文档](https://gowind.cloud)
 - 🐛 反馈：[GitHub Issues](https://github.com/tx7do/go-wind-admin/issues)

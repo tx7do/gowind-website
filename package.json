@@ -19,6 +19,7 @@
     "@vuepress/plugin-search": "2.0.0-rc.123",
     "@vuepress/theme-default": "2.0.0-rc.88",
     "katex": "^0.16.33",
+    "markdown-it": "^14.1.0",
     "sass-embedded": "^1.86.0",
     "vue": "^3.5.13",
     "vuepress": "2.0.0-rc.20",

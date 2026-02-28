@@ -309,8 +309,8 @@ A: 是的，集成 Elasticsearch 提供强大的全文搜索能力。
 
 ## 九、获取帮助
 
-- 📖 [快速开始指南](/get-started.md)
-- 📧 邮件：contact@gowind.cloud
+- 📖 [快速开始指南](/guide/getting-started.md)
+- 📧 邮件：<yanglinbo@gmail.com>
 - 💬 讨论：[GitHub Discussions](https://github.com/tx7do/go-wind-cms/discussions)
 - 🐛 反馈：[GitHub Issues](https://github.com/tx7do/go-wind-cms/issues)
 

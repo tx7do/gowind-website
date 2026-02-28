@@ -463,8 +463,8 @@ A: 集成第三方推送服务（APNs、FCM、极光等）或自建推送系统�
 
 ## 十一、获取帮助
 
-- 📖 [快速开始指南](/get-started.md)
-- 📧 邮件：contact@gowind.cloud
+- 📖 [快速开始指南](/guide/getting-started.md)
+- 📧 邮件：<yanglinbo@gmail.com>
 - 💬 讨论：[GitHub Discussions](https://github.com/tx7do/go-wind-im/discussions)
 - 🐛 反馈：[GitHub Issues](https://github.com/tx7do/go-wind-im/issues)
 

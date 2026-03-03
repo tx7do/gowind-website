@@ -6,12 +6,12 @@
 
 无需任何部署，直接在线体验完整功能：
 
-| 产品        | 体验地址                                     | API 文档                                               | 默认账号              |
-|-----------|------------------------------------------|------------------------------------------------------|-------------------|
-| **Admin** | [admin](https://demo.admin.gowind.cloud) | [Swagger](https://api.demo.admin.gowind.cloud/docs/) | `admin` / `admin` |
-| **CMS**   | 敬请期待                                     | -                                                    | -                 |
-| **IM**    | [web](https://im.gowind.cloud)           | -                                                    | -                 |
-| **UBA**   | 敬请期待                                     | -                                                    | -                 |
+| 产品        | 体验地址                                     | API 文档                                                                                          | 默认账号              |
+|-----------|------------------------------------------|-------------------------------------------------------------------------------------------------|-------------------|
+| **Admin** | [admin](https://demo.admin.gowind.cloud) | [Swagger](https://api.demo.admin.gowind.cloud/docs/)                                            | `admin` / `admin` |
+| **CMS**   | [admin](https://admin.cms.gowind.cloud)  | [Admin](https://api.admin.cms.gowind.cloud/docs/)、[App](https://api.app.cms.gowind.cloud/docs/) | `admin` / `admin` |
+| **IM**    | [web](https://im.gowind.cloud)           | -                                                                                               | -                 |
+| **UBA**   | 敬请期待                                     | -                                                                                               | -                 |
 
 ## 二、选择您的产品
 

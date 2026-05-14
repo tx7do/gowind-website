@@ -182,19 +182,38 @@ cd go-wind-cms
 # 后端启动
 cd backend
 make init
-gow run cms
+gow run core
+gow run app
+gow run admin
 
-# 前端启动
-cd ../frontend
+# Vue版管理前端启动
+cd ../frontend/admin
 pnpm install
 pnpm dev:antd
+
+# Vue版app前端启动
+cd ../vue
+pnpm install
+pnpm dev:antd
+
+# React版app前端启动
+cd ../react
+pnpm install
+pnpm dev
+
+# Taro版app前端启动
+cd ../taro
+yarn install
+yarn dev:h5
 ```
 
 ### 4. 访问地址
 
 - 管理后台：http://localhost:5555
 - API 文档：http://localhost:7799/docs/
-- 公开网站：http://localhost:8080
+- Vue版前台：http://localhost:3000
+- React版前台：http://localhost:3000
+- Taro版前台：http://localhost:10086
 
 ## 六、API 概览
 

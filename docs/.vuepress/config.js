@@ -43,10 +43,35 @@ export default defineUserConfig({
             // GoWind Admin 侧边栏
             '/admin/': [
                 {
-                    text: 'GoWind Admin',
+                    text: '介绍',
                     children: [
                         '/admin/intro.md',
                         '/admin/installation.md',
+                    ],
+                },
+                {
+                    text: '后端文档',
+                    children: [
+                        '/admin/backend-architecture.md',
+                        '/admin/backend-modules.md',
+                        '/admin/backend-api.md',
+                        '/admin/backend-config-deploy.md',
+                        '/admin/backend-extension.md',
+                    ],
+                },
+                {
+                    text: '前端文档',
+                    children: [
+                        '/admin/frontend-architecture.md',
+                        '/admin/frontend-modules.md',
+                    ],
+                },
+                {
+                    text: '二开教程',
+                    children: [
+                        '/admin/backend-tutorial-new-module.md',
+                        '/admin/frontend-tutorial-new-page.md',
+                        '/admin/tutorial-fullstack-integration.md',
                     ],
                 },
             ],

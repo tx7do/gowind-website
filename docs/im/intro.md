@@ -111,37 +111,27 @@ GoWind IM 是一个轻量级但功能完整的即时通讯组件，基于 Go 后
 
 ### 系统架构
 
-```
-┌──────────────────────────────────┐
-│   Web / App 客户端               │
-│   (Vue3 / React Native)          │
-└──────────────┬───────────────────┘
-               │
-        ┌──────▼──────────┐
-        │  WebSocket/gRPC │
-        │    连接层       │
-        └──────┬──────────┘
-               │
-    ┌──────────┼──────────┐
-    │          │          │
-┌───▼──┐  ┌───▼──┐  ┌───▼──┐
-│消息服务 │  │用户服务 │  │通话服务 │
-└───┬──┘  └───┬──┘  └───┬──┘
-    │         │         │
-┌───▼──────────▼─────────▼──┐
-│   数据层（MySQL/PG）      │
-│   缓存层（Redis）         │
-│   消息队列（Kafka/Redis） │
-│   媒体服务（SFU/MCU）     │
-└──────────────────────────┘
+```mermaid
+graph TB
+    Client["Web / App 客户端<br/>(Vue3 / React Native)"] --> Gateway["WebSocket/gRPC 连接层"]
+    Gateway --> MsgService["消息服务"]
+    Gateway --> UserService["用户服务"]
+    Gateway --> CallService["通话服务"]
+    MsgService --> DataLayer["数据层（MySQL/PG）<br/>缓存层（Redis）<br/>消息队列（Kafka/Redis）<br/>媒体服务（SFU/MCU）"]
+    UserService --> DataLayer
+    CallService --> DataLayer
 ```
 
 ## 四、核心功能模块
 
 ### 1. 用户管理
 
-```bash
-用户注册 → 用户登录 → 多设备管理 → 在线状态 → 用户退出
+```mermaid
+graph LR
+    A[用户注册] --> B[用户登录]
+    B --> C[多设备管理]
+    C --> D[在线状态]
+    D --> E[用户退出]
 ```
 
 - 账号注册和登录
@@ -165,8 +155,12 @@ GoWind IM 是一个轻量级但功能完整的即时通讯组件，基于 Go 后
 
 ### 4. 群组管理
 
-```
-群主创建群组 → 邀请成员 → 成员管理 → 群信息修改 → 群解散
+```mermaid
+graph LR
+    A[群主创建群组] --> B[邀请成员]
+    B --> C[成员管理]
+    C --> D[群信息修改]
+    D --> E[群解散]
 ```
 
 - 创建和解散群组

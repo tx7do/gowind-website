@@ -4,20 +4,20 @@ GoWind Admin 后端采用 Go 语言开发，基于 [go-kratos](https://go-kratos
 
 ## 一、技术栈概览
 
-| 类别 | 技术 | 说明 |
-|------|------|------|
-| 语言 | Go 1.18+ | 高性能编译型语言，天然支持高并发 |
-| 微服务框架 | go-kratos v2 | 字节跳动开源的 Go 微服务框架，提供 HTTP/gRPC 双协议支持 |
-| 依赖注入 | Wire | Google 出品的编译时依赖注入工具，消除运行时反射开销 |
-| ORM | Ent / Gorm | Ent 用于核心业务实体（自动生成、类型安全），Gorm 用于辅助查询 |
-| 数据库 | PostgreSQL（默认）/ MySQL | 通过配置切换，Ent/Gorm 均支持多数据库适配 |
-| 缓存 | Redis | 用于令牌缓存、会话管理、验证码存储等 |
-| 对象存储 | MinIO | S3 兼容的对象存储服务，用于文件上传管理 |
-| API 定义 | Protobuf + Buf | 标准化的接口定义语言，自动生成 Go/TypeScript 代码 |
-| 任务调度 | Asynq | 基于 Redis 的分布式任务队列，支持定时任务和异步任务 |
-| 实时推送 | SSE（Server-Sent Events） | 服务端向客户端推送实时消息 |
-| 权限控制 | Casbin / OPA / Zanzibar | 多种策略引擎可选，支持 RBAC、ABAC 等权限模型 |
-| 容器化 | Docker + Docker Compose | 一键部署所有依赖服务及应用本身 |
+| 类别     | 技术                      | 说明                                  |
+|--------|-------------------------|-------------------------------------|
+| 语言     | Go 1.18+                | 高性能编译型语言，天然支持高并发                    |
+| 微服务框架  | go-kratos v2            | 字节跳动开源的 Go 微服务框架，提供 HTTP/gRPC 双协议支持 |
+| 依赖注入   | Wire                    | Google 出品的编译时依赖注入工具，消除运行时反射开销       |
+| ORM    | Ent / Gorm              | Ent 用于核心业务实体（自动生成、类型安全），Gorm 用于辅助查询 |
+| 数据库    | PostgreSQL（默认）/ MySQL   | 通过配置切换，Ent/Gorm 均支持多数据库适配           |
+| 缓存     | Redis                   | 用于令牌缓存、会话管理、验证码存储等                  |
+| 对象存储   | MinIO                   | S3 兼容的对象存储服务，用于文件上传管理               |
+| API 定义 | Protobuf + Buf          | 标准化的接口定义语言，自动生成 Go/TypeScript 代码    |
+| 任务调度   | Asynq                   | 基于 Redis 的分布式任务队列，支持定时任务和异步任务       |
+| 实时推送   | SSE（Server-Sent Events） | 服务端向客户端推送实时消息                       |
+| 权限控制   | Casbin / OPA / Zanzibar | 多种策略引擎可选，支持 RBAC、ABAC 等权限模型         |
+| 容器化    | Docker + Docker Compose | 一键部署所有依赖服务及应用本身                     |
 
 ## 二、架构设计
 
@@ -25,18 +25,10 @@ GoWind Admin 后端采用 Go 语言开发，基于 [go-kratos](https://go-kratos
 
 后端服务遵循经典的 **三层架构** 设计：
 
-```
-┌──────────────────────────────────────────────┐
-│                  API 层 (Transport)            │
-│    HTTP Server / SSE Server / Asynq Server    │
-│    中间件：认证、授权、日志、限流、熔断          │
-├──────────────────────────────────────────────┤
-│                Service 层 (业务逻辑)            │
-│    用户服务、权限服务、租户服务、字典服务...       │
-├──────────────────────────────────────────────┤
-│                Data 层 (数据访问)               │
-│    Ent ORM、Gorm、Redis、MinIO                 │
-└──────────────────────────────────────────────┘
+```mermaid
+graph TB
+    API["<b>API 层 (Transport)</b><br/>HTTP Server / SSE Server / Asynq Server<br/>中间件：认证、授权、日志、限流、熔断"] --> Service["<b>Service 层 (业务逻辑)</b><br/>用户服务、权限服务、租户服务、字典服务..."]
+    Service --> Data["<b>Data 层 (数据访问)</b><br/>Ent ORM、Gorm、Redis、MinIO"]
 ```
 
 - **API 层**：负责接收外部请求，通过 Protobuf 生成的 HTTP Handler 暴露 RESTful 接口。中间件层处理认证（JWT）、授权（Casbin/OPA）、API 审计日志等横切关注点。
@@ -47,11 +39,11 @@ GoWind Admin 后端采用 Go 语言开发，基于 [go-kratos](https://go-kratos
 
 Admin 后端服务由三个 Transport Server 组成：
 
-| 服务 | 端口 | 说明 |
-|------|------|------|
-| REST Server | `:7788` | 主要的 HTTP API 服务，处理所有业务请求 |
-| SSE Server | `:7789` | 服务器推送服务，用于实时消息通知 |
-| Asynq Server | 通过 Redis | 异步任务调度服务，处理定时任务和后台任务 |
+| 服务           | 端口       | 说明                       |
+|--------------|----------|--------------------------|
+| REST Server  | `:7788`  | 主要的 HTTP API 服务，处理所有业务请求 |
+| SSE Server   | `:7789`  | 服务器推送服务，用于实时消息通知         |
+| Asynq Server | 通过 Redis | 异步任务调度服务，处理定时任务和后台任务     |
 
 ### 3. 启动流程
 

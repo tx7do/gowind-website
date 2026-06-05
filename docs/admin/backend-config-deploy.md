@@ -147,20 +147,20 @@ logger:
 
 项目提供两个 Docker Compose 文件：
 
-| 文件 | 说明 |
-|------|------|
-| `docker-compose.yaml` | 完整部署（中间件 + 应用服务） |
-| `docker-compose.libs.yaml` | 仅部署中间件依赖 |
+| 文件                         | 说明               |
+|----------------------------|------------------|
+| `docker-compose.yaml`      | 完整部署（中间件 + 应用服务） |
+| `docker-compose.libs.yaml` | 仅部署中间件依赖         |
 
 ### 2. 中间件服务
 
-| 服务 | 镜像 | 端口 | 说明 |
-|------|------|------|------|
-| PostgreSQL | `bitnami/postgresql:latest` | 5432 | 主数据库 |
-| MySQL（可选） | `mariadb:latest` | 3306 | 备选数据库 |
-| Redis | `bitnami/redis:latest` | 6379 | 缓存/队列 |
-| MinIO | `minio/minio:latest` | 9000/9001 | 对象存储 |
-| Jaeger（可选） | `jaegertracing/all-in-one:latest` | 16686 | 链路追踪 |
+| 服务         | 镜像                                | 端口        | 说明    |
+|------------|-----------------------------------|-----------|-------|
+| PostgreSQL | `bitnami/postgresql:latest`       | 5432      | 主数据库  |
+| MySQL（可选）  | `mariadb:latest`                  | 3306      | 备选数据库 |
+| Redis      | `bitnami/redis:latest`            | 6379      | 缓存/队列 |
+| MinIO      | `minio/minio:latest`              | 9000/9001 | 对象存储  |
+| Jaeger（可选） | `jaegertracing/all-in-one:latest` | 16686     | 链路追踪  |
 
 ### 3. 部署脚本
 
@@ -168,25 +168,25 @@ logger:
 
 #### 环境初始化脚本
 
-| 脚本 | 说明 |
-|------|------|
-| `scripts/env/install_unix_dev.sh` | Linux/macOS 开发环境安装 |
-| `scripts/env/install_unix_prod.sh` | Linux/macOS 生产环境安装 |
-| `scripts/env/install_windows_dev.ps1` | Windows 开发环境安装 |
+| 脚本                                    | 说明                 |
+|---------------------------------------|--------------------|
+| `scripts/env/install_unix_dev.sh`     | Linux/macOS 开发环境安装 |
+| `scripts/env/install_unix_prod.sh`    | Linux/macOS 生产环境安装 |
+| `scripts/env/install_windows_dev.ps1` | Windows 开发环境安装     |
 
 #### Docker 部署脚本
 
-| 脚本 | 说明 |
-|------|------|
-| `scripts/docker/full_deploy.sh` | 完整 Docker 部署（中间件 + 应用） |
-| `scripts/docker/full_deploy.ps1` | 完整 Docker 部署（Windows） |
-| `scripts/docker/libs_only.sh` | 仅启动中间件依赖（推荐开发使用） |
-| `scripts/docker/libs_only.ps1` | 仅启动中间件依赖（Windows） |
+| 脚本                               | 说明                     |
+|----------------------------------|------------------------|
+| `scripts/docker/full_deploy.sh`  | 完整 Docker 部署（中间件 + 应用） |
+| `scripts/docker/full_deploy.ps1` | 完整 Docker 部署（Windows）  |
+| `scripts/docker/libs_only.sh`    | 仅启动中间件依赖（推荐开发使用）       |
+| `scripts/docker/libs_only.ps1`   | 仅启动中间件依赖（Windows）      |
 
 #### 生产部署脚本
 
-| 脚本 | 说明 |
-|------|------|
+| 脚本                              | 说明         |
+|---------------------------------|------------|
 | `scripts/deploy/pm2_service.sh` | PM2 进程管理部署 |
 
 ## 四、开发环境部署
@@ -251,26 +251,26 @@ make build
 
 ## 六、Makefile 命令速查
 
-| 命令 | 说明 |
-|------|------|
-| `make init` | 初始化开发环境（安装 Protobuf 插件 + CLI 工具） |
-| `make plugin` | 安装 Protobuf 相关插件 |
-| `make cli` | 安装命令行工具（kratos、buf、ent、golangci-lint 等） |
-| `make api` | 生成 Protobuf Go 代码 |
-| `make openapi` | 生成 OpenAPI 文档 |
-| `make ts` | 生成 TypeScript 代码 |
-| `make gen` | 一键生成所有代码（Ent + Wire + API + OpenAPI） |
-| `make wire` | 生成 Wire 依赖注入代码 |
-| `make ent` | 生成 Ent ORM 代码 |
-| `make build` | 构建所有服务 |
-| `make test` | 运行测试 |
-| `make cover` | 运行覆盖率测试 |
-| `make lint` | 运行代码静态检查 |
-| `make docker-up` | 完整 Docker 部署 |
-| `make docker-libs` | 仅启动中间件 |
-| `make docker-down` | 停止所有 Docker 服务 |
-| `make pm2-deploy` | PM2 部署 |
-| `make help` | 显示帮助信息 |
+| 命令                 | 说明                                      |
+|--------------------|-----------------------------------------|
+| `make init`        | 初始化开发环境（安装 Protobuf 插件 + CLI 工具）        |
+| `make plugin`      | 安装 Protobuf 相关插件                        |
+| `make cli`         | 安装命令行工具（kratos、buf、ent、golangci-lint 等） |
+| `make api`         | 生成 Protobuf Go 代码                       |
+| `make openapi`     | 生成 OpenAPI 文档                           |
+| `make ts`          | 生成 TypeScript 代码                        |
+| `make gen`         | 一键生成所有代码（Ent + Wire + API + OpenAPI）    |
+| `make wire`        | 生成 Wire 依赖注入代码                          |
+| `make ent`         | 生成 Ent ORM 代码                           |
+| `make build`       | 构建所有服务                                  |
+| `make test`        | 运行测试                                    |
+| `make cover`       | 运行覆盖率测试                                 |
+| `make lint`        | 运行代码静态检查                                |
+| `make docker-up`   | 完整 Docker 部署                            |
+| `make docker-libs` | 仅启动中间件                                  |
+| `make docker-down` | 停止所有 Docker 服务                          |
+| `make pm2-deploy`  | PM2 部署                                  |
+| `make help`        | 显示帮助信息                                  |
 
 ## 七、Hosts 配置
 

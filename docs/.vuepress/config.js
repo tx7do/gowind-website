@@ -7,6 +7,7 @@ import {googleAnalyticsPlugin} from '@vuepress/plugin-google-analytics'
 import {searchPlugin} from "@vuepress/plugin-search";
 import {componentsPlugin} from "vuepress-plugin-components";
 import {searchConsolePlugin} from "vuepress-plugin-china-search-console";
+import {markdownChartPlugin} from "@vuepress/plugin-markdown-chart";
 
 
 export default defineUserConfig({
@@ -72,6 +73,19 @@ export default defineUserConfig({
                         '/admin/backend-tutorial-new-module.md',
                         '/admin/frontend-tutorial-new-page.md',
                         '/admin/tutorial-fullstack-integration.md',
+                    ],
+                },
+                {
+                    text: '高级教程',
+                    children: [
+                        '/admin/tutorial-lua-extension.md',
+                        '/admin/tutorial-permission-system.md',
+                        '/admin/tutorial-multi-tenancy.md',
+                        '/admin/tutorial-task-scheduling.md',
+                        '/admin/tutorial-file-storage.md',
+                        '/admin/tutorial-eventbus-architecture.md',
+                        '/admin/tutorial-theme-i18n.md',
+                        '/admin/tutorial-performance-monitoring.md',
                     ],
                 },
             ],
@@ -145,6 +159,9 @@ export default defineUserConfig({
         // searchConsolePlugin({
         //     // options ...
         // }),
+        markdownChartPlugin({
+            mermaid: true,
+        }),
     ],
 
     bundler: viteBundler(),

@@ -23,7 +23,7 @@ graph TB
 
 | 环境类型 | 核心依赖                     | 最低版本                | 用途说明         |
 |------|--------------------------|---------------------|--------------|
-| 后端   | Go、Docker、Docker Compose | Go 1.18+            | 微服务编译、依赖服务管理 |
+| 后端   | Go、Docker、Docker Compose | Go 1.22+            | 微服务编译、依赖服务管理 |
 | 后端   | Buf、Protoc、Make          |                     | API 代码生成、构建  |
 | 前端   | Node.js、pnpm             | Node.js 16+、pnpm 8+ | 前端工程构建、依赖安装  |
 

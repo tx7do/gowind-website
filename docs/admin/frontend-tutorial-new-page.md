@@ -11,7 +11,7 @@ cd backend
 make ts
 ```
 
-生成的代码位于 `api/gen/go/` 目录，前端会自动引用这些类型定义。
+生成的 TypeScript 类型定义会被前端自动引用。
 
 ## 二、步骤 1：创建 API Service 层
 
@@ -710,7 +710,7 @@ const pageConfig: ProPageConfig = {
 
 在 `locales/` 目录下添加多语言翻译文件。
 
-## 十、总结
+## 十一、总结
 
 通过本教程，我们完成了前端页面的完整开发流程：
 
@@ -722,7 +722,7 @@ const pageConfig: ProPageConfig = {
 
 这套流程适用于任何新增的业务页面，掌握了这个模式，就可以快速扩展 GoWind Admin 的前端功能。
 
-## 十一、相关文档
+## 十二、相关文档
 
 - [前端架构总览](./frontend-architecture.md)
 - [前端核心功能详解](./frontend-modules.md)

@@ -236,7 +236,7 @@ make api
 # 生成 OpenAPI v3 文档
 make openapi
 
-# 生成 TypeScript 客户端代码（所有前端版本）
+# 生成 TypeScript 客户端代码（Vue Vben + Vue Element + React）
 make ts
 
 # 一键生成所有（Ent + Wire + API + OpenAPI）

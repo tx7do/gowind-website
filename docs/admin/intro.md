@@ -14,7 +14,7 @@ GoWind Admin 是一套面向中大型项目的企业级中后台解决方案，�
 | 任务调度 | Asynq                                                               | 基于 Redis 的分布式任务队列，支持定时/延迟/异步任务   |
 | 权限   | Casbin + OPA、JWT 认证                                                 | 双引擎权限校验，细粒度角色权限控制，多租户数据隔离        |
 | 工程化  | Makefile、Docker Compose、Buf 代码生成、ESLint/Prettier                    | 全流程工程化管控，一键构建部署                  |
-| 扩展能力 | Lua 脚本引擎、自定义 API 模块、EventBus 事件总线                                   | 灵活扩展业务逻辑，无需修改核心代码                |
+| 扩展能力 | Lua / JavaScript 脚本引擎、自定义 API 模块、EventBus 事件总线                                   | 灵活扩展业务逻辑，无需修改核心代码                |
 
 ### 2. 核心功能
 
@@ -24,7 +24,7 @@ GoWind Admin 是一套面向中大型项目的企业级中后台解决方案，�
 - **标准化 API 体系**：基于 Protobuf 定义接口，自动生成 Go/TypeScript 代码及 OpenAPI 文档
 - **分布式任务调度**：基于 Asynq 实现定时任务、延迟任务和异步任务，支持优先级队列和重试策略
 - **文件存储服务**：集成 MinIO 对象存储，支持文件上传、下载和管理
-- **Lua 脚本扩展**：内置 Lua 引擎和 EventBus，支持自定义 API 模块开发
+- **脚本引擎扩展**：内置 Lua/JavaScript 脚本引擎和 EventBus，支持自定义 API 模块开发
 - **富文本编辑器**：集成 TipTap 富文本编辑器，支持表格、代码块、图片上传等
 - **多环境适配**：开发/测试/生产环境配置隔离，Docker Compose 一键启动依赖服务
 
@@ -55,6 +55,8 @@ graph TB
     E --> HTTP
     R --> HTTP
     V --> SSE
+    E --> SSE
+    R --> SSE
     HTTP --> DB
     HTTP --> REDIS
     HTTP --> OSS
@@ -79,6 +81,9 @@ backend/
 ├── pkg/                    # 通用工具包
 │   ├── authorizer/         # Casbin/OPA 权限引擎
 │   ├── constants/          # 常量（权限、角色、租户类型）
+│   ├── crypto/             # 加密工具（AES-GCM）
+│   ├── entgo/              # Ent ORM 扩展
+│   ├── eventbus/           # 事件总线
 │   ├── jwt/                # JWT 工具
 │   ├── lua/                # Lua 脚本引擎
 │   ├── middleware/         # 中间件（auth、ent viewer）
@@ -112,7 +117,7 @@ frontend/admin/
 │   ├── packages/           # 通用包（组件库、工具、国际化）
 │   └── scripts/deploy/     # Docker 部署脚本
 ├── vue-element/            # Vue Element 版
-│   ├── src/views/          # 业务页面
+│   ├── src/pages/          # 业务页面
 │   ├── src/core/           # 核心逻辑（偏好、i18n、路由）
 │   └── src/utils/          # 工具函数
 └── react/                  # React 版
@@ -241,9 +246,9 @@ make gen
 
 ### 4. 扩展开发
 
-#### 后端扩展（Lua 脚本）
+#### 后端扩展（脚本引擎）
 
-内置 Lua 脚本引擎和 EventBus 事件总线，支持无需编译的业务逻辑扩展：
+内置 Lua/JavaScript 脚本引擎和 EventBus 事件总线，支持无需编译的业务逻辑扩展：
 
 ```lua
 -- 监听用户创建事件，自动投递欢迎邮件任务

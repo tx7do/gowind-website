@@ -26,6 +26,7 @@ export default defineUserConfig({
             {text: 'GoWind CMS', link: '/cms/intro.md'},
             {text: 'GoWind IM', link: '/im/intro.md'},
             {text: 'GoWind UBA', link: '/uba/intro.md'},
+            {text: 'GoWind Toolkit', link: '/toolkit/intro.md'},
         ],
 
         // 侧边栏配置（分项目独立侧边栏）
@@ -119,6 +120,22 @@ export default defineUserConfig({
                     children: [
                         '/uba/intro.md',
                         '/uba/installation.md',
+                    ],
+                },
+            ],
+            // GoWind Toolkit 侧边栏
+            '/toolkit/': [
+                {
+                    text: 'GoWind Toolkit',
+                    children: [
+                        '/toolkit/intro.md',
+                    ],
+                },
+                {
+                    text: '代码生成',
+                    children: [
+                        '/toolkit/backend-code-generation.md',
+                        '/toolkit/frontend-code-generation.md',
                     ],
                 },
             ],

@@ -128,9 +128,140 @@ backend/
 └── docker-compose.libs.yaml    # 仅依赖服务编排
 ```
 
-## 四、核心设计理念
+## 四、分层设计：Service 与 Data 的交互模式
 
-### 1. 依赖注入（Wire）
+GoWind Admin 的分层设计中，Service 层与 Data 层的耦合程度是架构的**关键胜负手**。框架根据模块复杂度，灵活采用三种交互模式，在「快速落地」与「企业级扩展」之间取得动态平衡。
+
+### 1. 模式一：Service 直连 Data Repo（简单直接）
+
+Data 层直接实现 Repo 结构体（无接口），Service 层直接导入 Data 包引用 Repo 实例：
+
+```go
+// Data 层：直接实现 Repo
+package data
+
+type DepartmentRepo struct {
+    client *ent.Client
+}
+
+func (r *DepartmentRepo) GetByID(ctx context.Context, id uint32) (*ent.Department, error) {
+    return r.client.Department.Query().Where(department.ID(id)).Only(ctx)
+}
+```
+
+```go
+// Service 层：直接依赖 Data 层的具体实现
+package service
+
+type DepartmentService struct {
+    deptRepo *data.DepartmentRepo  // 直接依赖具体类型
+}
+
+func (s *DepartmentService) GetDepartmentInfo(ctx context.Context, id uint32) (*dto.DepartmentVO, error) {
+    deptEnt, err := s.deptRepo.GetByID(ctx, id)  // 直接调用
+    // ...业务逻辑处理 + 数据组装
+}
+```
+
+**适用场景**：轻量模块（日志、配置、系统公告）、MVP 验证、1-3 人小团队
+
+| 优点 | 缺点 |
+|------|------|
+| 开发效率极高，无需定义接口 | Service 与 Data 强耦合，替换 ORM 需改所有调用处 |
+| 架构极简，新人上手门槛低 | 可测试性差，单元测试需依赖真实数据库 |
+| 调试链路清晰 | 扩展性缺失，不支持多存储适配 |
+
+### 2. 模式二：依赖倒置接口解耦（推荐）
+
+由 Service 层定义 Repo 接口（明确「需要什么」），Data 层实现接口（明确「如何实现」），通过 Wire 依赖注入组装：
+
+```go
+// Service 层：定义抽象接口
+package service
+
+type DepartmentRepo interface {
+    GetByID(ctx context.Context, id uint32) (*DepartmentEntity, error)
+    ListByOrgID(ctx context.Context, orgID uint32) ([]*DepartmentEntity, error)
+}
+
+type DepartmentService struct {
+    deptRepo DepartmentRepo  // 依赖抽象接口
+}
+```
+
+```go
+// Data 层：实现 Service 层定义的接口
+package data
+
+type DepartmentRepoImpl struct {
+    entClient *ent.Client
+    cache     *redis.Client
+}
+
+func NewDepartmentRepoImpl(entClient *ent.Client, cache *redis.Client) service.DepartmentRepo {
+    return &DepartmentRepoImpl{entClient: entClient, cache: cache}
+}
+
+func (r *DepartmentRepoImpl) GetByID(ctx context.Context, id uint32) (*service.DepartmentEntity, error) {
+    // 可自由组合 Ent + Redis 缓存，Service 层无感知
+}
+```
+
+```go
+// Wire 依赖注入：绑定接口与实现
+var ServiceProviderSet = wire.NewSet(
+    service.NewDepartmentService,
+    data.NewDepartmentRepoImpl,  // 绑定
+)
+```
+
+**适用场景**：用户管理、权限控制、多租户等核心模块，3-10 人团队
+
+| 优点 | 缺点 |
+|------|------|
+| 彻底解耦，修改 Data 不影响 Service | 初期代码量增加 30%-50% |
+| 可通过 Mock 工具实现单元测试 | 需理解依赖倒置和 Wire |
+| 支持多存储适配（MySQL/PostgreSQL/Redis） | 调试链路变长 |
+
+### 3. 模式三：新增 Biz 层（超大型项目）
+
+对于跨聚合根、复杂状态流转、强事务一致性的场景，可引入 Biz 层形成四层架构：
+
+```
+API 层（协议处理） → Service 层（服务契约） → Biz 层（核心业务逻辑） → Data 层（数据访问）
+```
+
+```go
+// Biz 层：核心业务编排
+package biz
+
+type UserBiz struct {
+    userRepo    UserRepo
+    roleRepo    RoleRepo
+    messageRepo MessageRepo
+}
+
+func (b *UserBiz) CreateUserInTenant(ctx context.Context, tenantID uint32, req *CreateUserReq) (*User, error) {
+    // 1. 校验用户名唯一
+    // 2. 创建用户
+    // 3. 分配角色（跨聚合）
+    // 4. 发送欢迎消息（可降级）
+}
+```
+
+**适用场景**：订单、支付等超复杂模块，10+ 人团队，具备领域建模意识
+
+### 4. 分层决策指南
+
+| 项目特征 | 推荐方案 | 典型模块 |
+|---------|---------|---------|
+| MVP / 单表 CRUD / 内部工具 | 模式一（直连） | 系统公告、日志、字典 |
+| 多人协作 / 需单元测试 / 多存储 | 模式二（接口解耦） | 用户、权限、租户 |
+| 跨聚合 / 状态机 / 强事务 | 模式三（Biz 层） | 订单、支付 |
+
+> GoWind Admin 默认生成的模块多采用**模式一**（便于新手快速上手），而用户、租户、权限等核心模块已按**模式二**实现，可直接参考源码。
+
+## 五、依赖注入（Wire）
 
 项目使用 Google Wire 实现编译时依赖注入，通过 `ProviderSet` 将 Data、Service、Server 三层的依赖关系自动编排：
 
@@ -146,13 +277,7 @@ func initApp(*bootstrap.Context) (*kratos.App, func(), error) {
 }
 ```
 
-### 2. 三层分离
-
-- **Service** 只依赖接口（Repo 接口），不直接操作数据库
-- **Data** 实现 Repo 接口，封装具体的数据库操作
-- **Server** 负责注册 Handler 和中间件，连接 Service 与外部请求
-
-### 3. 代码生成驱动
+## 六、代码生成驱动
 
 通过 Protobuf + Buf 自动生成：
 - Go HTTP Server/Client 代码
@@ -160,7 +285,7 @@ func initApp(*bootstrap.Context) (*kratos.App, func(), error) {
 - OpenAPI v3 文档
 - 错误码定义
 
-### 4. 多租户支持
+## 七、多租户支持
 
 后端内置多租户能力，支持两种用户-租户关系模型：
 - **一对一**：一个用户只属于一个租户
@@ -168,7 +293,7 @@ func initApp(*bootstrap.Context) (*kratos.App, func(), error) {
 
 通过 `constants.DefaultUserTenantRelationType` 配置切换。
 
-## 五、相关文档
+## 八、相关文档
 
 - [后端核心模块详解](./backend-modules.md)
 - [后端 API 与 Protobuf 定义](./backend-api.md)

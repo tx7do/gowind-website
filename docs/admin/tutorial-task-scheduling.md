@@ -50,13 +50,17 @@ asynq:
 package task
 
 const (
-    TypeSendEmail           = "send_email"
-    TypeSendSMS             = "send_sms"
-    TypeCleanupTempFiles    = "cleanup_temp_files"
-    TypeGenerateReport      = "generate_report"
-    TypeSyncData            = "sync_data"
+    TypeSendEmail           = "email:send"
+    TypeSendSMS             = "sms:send"
+    TypeCleanupTempFiles    = "file:cleanup_temp"
+    TypeGenerateReport      = "report:generate"
+    TypeSyncData            = "data:sync"
 )
 ```
+
+**命名规则**：采用 `模块:操作` 格式，使用冒号分隔，全小写。任务名必须全局唯一，建议语义明确（避免 `task1` 等模糊命名）。
+
+> **特殊特性**：注册 `email:send` 后，`email:send:1` 等变体也会被 `email:send` 的处理器处理，可用于任务分组。
 
 ### 2.2 定义任务载荷
 

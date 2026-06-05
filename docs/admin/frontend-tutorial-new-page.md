@@ -618,6 +618,94 @@ const { hasAccessByCodes } = useAccess();
 
 根据用户的数据权限范围过滤列表数据，后端会在 Context 中自动注入用户信息。
 
+## 十、Vue Element Plus 版本：ProPage 零模板配置
+
+Vue Element Plus 版本提供了一套**渐进式 Pro 组件库**，基于原生 Element Plus 封装，不隐藏底层 API，支持四级开发层级。
+
+### 10.1 Pro 组件库结构
+
+```
+components/Pro/
+├── ProForm/          # 动态配置化表单
+├── ProSearch/        # 自适应搜索栏
+├── ProToolbar/       # 页面工具栏
+├── ProTable/         # 双引擎自适应表格 (el-table / vxe-table)
+├── ProPagination/    # 智能分页组件
+├── ProModal/         # 弹窗/抽屉通用组件
+├── ProPage/          # 一站式页面编排入口
+├── composables/      # 可复用状态 hooks
+└── index.ts          # 统一导出入口
+```
+
+### 10.2 Level 1：零模板配置（标准 CRUD）
+
+通过一份 `ProPageConfig` 配置对象，自动生成搜索、表格、弹窗、分页，全程无需编写模板代码：
+
+```vue
+<template>
+  <ProPage :config="pageConfig" />
+</template>
+
+<script setup lang="ts">
+import { ProPage, type ProPageConfig } from "@/components/Pro";
+import { fetchListTenants, createTenant, updateTenant, useDeleteTenant } from "@/api/composables";
+
+const { mutateAsync: deleteTenant } = useDeleteTenant();
+
+const pageConfig: ProPageConfig = {
+  engine: "element",  // 切换表格引擎：vxe / element
+  search: {
+    grid: true,
+    fields: [
+      { type: "input", label: "租户名称", field: "name", attrs: { clearable: true } },
+      { type: "select", label: "状态", field: "status", options: [{ label: "启用", value: 1 }, { label: "禁用", value: 0 }] },
+    ]
+  },
+  table: {
+    listAction: async (query) => {
+      const { page, pageSize, ...params } = query;
+      const res = await fetchListTenants({ page, pageSize, ...params });
+      return { items: res.items || [], total: res.total || 0 };
+    },
+    deleteAction: async (ids) => await deleteTenant({ id: ids as number }),
+    toolbar: ["add", "delete"],
+    defaultToolbar: ["refresh", "filter"],
+    columns: [
+      { type: "selection", label: "", width: 50 },
+      { type: "index", label: "序号", width: 60 },
+      { prop: "name", label: "租户名称", minWidth: 140 },
+      { prop: "status", label: "状态", width: 100, cellType: "tag", labelMap: { 1: "启用", 0: "禁用" } },
+      { prop: "createdAt", label: "创建时间", minWidth: 180, cellType: "date", dateFormat: "YYYY-MM-DD HH:mm:ss" },
+      { prop: "action", label: "操作", fixed: "right", width: 180, cellType: "tool", buttons: [{ name: "edit" }, { name: "delete", attrs: { type: "danger" } }] },
+    ]
+  },
+  modal: {
+    component: "drawer",
+    drawer: { title: "租户维护", size: "520px" },
+    fields: [
+      { type: "input", label: "租户名称", field: "name", rules: [{ required: true, message: "请输入租户名称" }] },
+      { type: "switch", label: "启用状态", field: "status" },
+    ],
+    submitAction: async (data, mode) => {
+      if (mode === "add") return await createTenant({ data });
+      return await updateTenant({ data });
+    },
+  },
+};
+</script>
+```
+
+### 10.3 四级开发层级
+
+| 层级 | 方式 | 适用场景 |
+|------|------|----------|
+| Level 1 | `ProPage` 零模板配置 | 标准 CRUD 页面（90% 场景） |
+| Level 2 | 组合式组件 | 需自定义部分区域 |
+| Level 3 | 单个 Pro 组件 | 高度定制页面 |
+| Level 4 | 原生 Element Plus | 完全自由编码 |
+
+> 所有 Pro 组件均基于原生 Element Plus 原子组件封装，Props、事件、插槽完全开放，随时可回归原生编码。
+
 ### 9.3 添加国际化
 
 在 `locales/` 目录下添加多语言翻译文件。

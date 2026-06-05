@@ -1,61 +1,112 @@
 # 后端扩展开发
 
-本文档介绍如何在 GoWind Admin 后端进行扩展开发，包括 Lua 脚本扩展、事件总线、加密工具、对象存储、自定义中间件等。
+本文档介绍如何在 GoWind Admin 后端进行扩展开发，包括脚本引擎、事件总线、加密工具、对象存储、自定义中间件等。
 
-## 一、Lua 脚本引擎
+## 一、脚本引擎
 
-GoWind Admin 内置 Lua 脚本引擎，支持在不修改核心代码的前提下扩展业务逻辑。Lua 引擎位于 `pkg/lua/` 目录。
+GoWind Admin 内置脚本引擎，支持 **Lua** 和 **JavaScript** 两种脚本语言，可在不修改核心代码、不重启服务的前提下动态扩展业务逻辑。引擎基于 `kratos-bootstrap/script_engine` 组件构建。
 
 ### 1. 引擎架构
+
+```mermaid
+graph TB
+    subgraph "GoWind Admin"
+        GO["Go 业务服务"]
+    end
+    subgraph "脚本引擎池"
+        P["EnginePool<br/>固定/自动扩容"]
+        E1["Engine 1"]
+        E2["Engine 2"]
+        EN["Engine N"]
+    end
+    subgraph "注册资源"
+        F["Go 函数"]
+        V["全局变量"]
+    end
+    subgraph "脚本加载"
+        S["字符串"]
+        FL["本地文件"]
+        R["远程流"]
+    end
+    GO --> P
+    P --> E1
+    P --> E2
+    P --> EN
+    F --> E1
+    V --> E1
+    S --> E1
+    FL --> E1
+    R --> E1
+end
+```
+
+### 2. 引擎池管理
+
+脚本引擎的创建与销毁是「重操作」，通过池化复用实例，避免性能损耗：
+
+- **EnginePool（固定池）**：初始化时创建固定数量引擎，适用于并发稳定的场景
+- **AutoGrowEnginePool（自动扩容池）**：根据请求量动态扩缩容，适配「潮汐式流量」
+
+```go
+// 初始化自动扩容引擎池
+func initScriptEngine() (script_engine.ScriptEngine, error) {
+    cfg := &conf.Script{
+        Engine: conf.Script_LUA,  // 或 conf.Script_JAVASCRIPT
+        Pool: &conf.Script_Pool{
+            Initial:     wrapperspb.Int32(2),   // 初始实例数
+            Max:         wrapperspb.Int32(10),   // 最大实例数
+            IdleTimeout: wrapperspb.Duration(300), // 空闲超时秒数
+        },
+    }
+    return script_engine.NewAutoGrowScriptEnginePool(cfg)
+}
+```
+
+### 3. Go ↔ 脚本双向交互
+
+**Go 向脚本注入能力**（注册函数和变量）：
+
+```go
+// 注册 Go 函数到脚本环境
+eng.RegisterFunction("updateUserStatus", userService.UpdateUserStatus)
+
+// 注册全局变量
+eng.RegisterVariable("SYSTEM_ENV", "production")
+```
+
+**JavaScript 脚本中调用 Go 函数**：
+
+```javascript
+const [success, err] = await updateUserStatus(userId, "active");
+console.log(`当前环境：${SYSTEM_ENV}`);
+```
+
+**Lua 脚本中调用 Go 函数**：
+
+```lua
+local success, err = updateUserStatus(userId, "active")
+logger.info("当前环境：" .. SYSTEM_ENV)
+```
+
+### 4. Lua 脚本开发
+
+Lua 引擎位于 `pkg/lua/` 目录，内置丰富的 API 模块：
 
 ```
 pkg/lua/
 ├── engine.go          # Lua 引擎核心
 ├── context.go         # Lua 上下文管理
 ├── loader.go          # 脚本加载器
-├── script.go          # 脚本定义
 ├── hook/              # 钩子机制
-├── api/               # 内置 Lua API 模块
-│   ├── cache.go       # 缓存操作 API
-│   ├── crypto.go      # 加密操作 API
-│   ├── eventbus.go    # 事件总线 API
-│   ├── hook.go        # 钩子 API
-│   ├── logger.go      # 日志 API
-│   ├── oss.go         # 对象存储 API
-│   ├── task.go        # 任务 API
-│   └── util.go        # 工具函数 API
-└── examples/          # Lua 脚本示例
-```
-
-### 2. 内置 Lua API 模块
-
-| 模块         | 功能           |
-|------------|--------------|
-| `cache`    | Redis 缓存读写操作 |
-| `crypto`   | AES-GCM 加密解密 |
-| `eventbus` | 事件发布与订阅      |
-| `hook`     | 钩子注册与触发      |
-| `logger`   | 日志记录         |
-| `oss`      | 对象存储文件操作     |
-| `task`     | 异步任务投递       |
-| `util`     | 通用工具函数       |
-
-### 3. Lua 脚本开发
-
-#### 基本结构
-
-```lua
--- my_module.lua
--- 自定义 Lua API 模块
-
-local M = {}
-
-function M.hello(name)
-    logger.info("Hello, " .. name .. "!")
-    return "greeting sent"
-end
-
-return M
+└── api/               # 内置 Lua API 模块
+    ├── cache.go       # 缓存操作
+    ├── crypto.go      # 加密操作
+    ├── eventbus.go    # 事件总线
+    ├── hook.go        # 钩子 API
+    ├── logger.go      # 日志
+    ├── oss.go         # 对象存储
+    ├── task.go        # 任务投递
+    └── util.go        # 工具函数
 ```
 
 #### 使用内置 API
@@ -65,47 +116,29 @@ return M
 local value = cache.get("user:1001")
 cache.set("user:1001", "updated_value", 3600)
 
--- 使用日志 API
-logger.info("Processing request...")
-logger.error("Something went wrong!")
-
 -- 使用对象存储 API
 local url = oss.get_presigned_url("bucket", "file.pdf", 3600)
 
 -- 使用加密 API
 local encrypted = crypto.encrypt("sensitive data")
-local decrypted = crypto.decrypt(encrypted)
 ```
 
-#### 注册自定义 API
-
-在 Go 代码中注册自定义 Lua API：
-
-```go
-func (e *Engine) registerAPIs(L *lua.LState) {
-    api.RegisterMyAPI(L, e.myService, e.logger)
-}
-```
-
-### 4. 钩子机制
-
-Lua 引擎支持钩子（Hook）机制，可以在特定事件触发时执行 Lua 脚本：
+#### 钩子机制
 
 ```lua
--- 注册钩子
+-- 在特定事件触发时执行 Lua 脚本
 hook.register("on_user_created", function(user_id)
     logger.info("New user created: " .. tostring(user_id))
-    -- 执行自定义逻辑
     cache.set("new_user:" .. tostring(user_id), "true", 3600)
 end)
 ```
 
-### 5. 脚本加载
+#### 脚本加载方式
 
-Lua 脚本支持自动加载和手动加载两种方式：
-
-- **自动加载**：将脚本放到指定目录，引擎启动时自动加载
-- **手动加载**：通过 `loader.go` 手动指定脚本路径
+- **字符串**：直接传入 Lua 代码字符串
+- **本地文件**：`eng.ExecuteFile(ctx, "./scripts/calculate.lua")`
+- **远程流**：从配置中心或对象存储加载
+- **自动加载**：放到指定目录，引擎启动时自动加载
 
 ## 二、事件总线
 

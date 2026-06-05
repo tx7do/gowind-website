@@ -76,6 +76,12 @@ menus (id, name, path, component, permission_code, ...)
 
 ## 三、Casbin 引擎实战
 
+Casbin 是一个国产开源访问控制库，支持 ACL/RBAC/ABAC 等模型，被 Intel、IBM、腾讯云、VMware 等公司使用。其核心由三个概念组成：
+
+- **请求（Request）**：由 `(subject, object, action)` 三元组组成，如 `(bob, /users, GET)`
+- **模型（Model）**：判定规则，定义了请求如何与策略匹配
+- **策略（Policy）**：用户与角色、资源、行为的映射关系
+
 ### 3.1 配置 Casbin
 
 在 `auth.yaml` 中启用 Casbin：

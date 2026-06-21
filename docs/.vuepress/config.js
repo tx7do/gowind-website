@@ -99,12 +99,71 @@ export default defineUserConfig({
                     text: '介绍',
                     children: [
                         '/cms/intro.md',
+                        '/cms/installation.md',
                     ],
                 },
                 {
-                    text: '安装部署',
+                    text: '后端文档',
                     children: [
-                        '/cms/installation.md',
+                        '/cms/backend-architecture.md',
+                        '/cms/backend-modules.md',
+                        '/cms/backend-api.md',
+                        '/cms/backend-config-deploy.md',
+                        '/cms/backend-extension.md',
+                    ],
+                },
+                {
+                    text: '前端文档',
+                    children: [
+                        '/cms/frontend-architecture.md',
+                        '/cms/frontend-modules.md',
+                    ],
+                },
+                {
+                    text: '入门教程',
+                    children: [
+                        '/cms/tutorial-new-content.md',
+                        '/cms/tutorial-codegen.md',
+                    ],
+                },
+                {
+                    text: '核心教程',
+                    children: [
+                        '/cms/tutorial-content-i18n.md',
+                        '/cms/tutorial-content-workflow.md',
+                        '/cms/tutorial-section-editor.md',
+                        '/cms/tutorial-headless-api.md',
+                        '/cms/tutorial-frontend-app.md',
+                    ],
+                },
+                {
+                    text: '进阶教程',
+                    children: [
+                        '/cms/tutorial-multi-site.md',
+                        '/cms/tutorial-media-asset.md',
+                        '/cms/tutorial-comment-system.md',
+                        '/cms/tutorial-eventbus-architecture.md',
+                        '/cms/tutorial-lua-extension.md',
+                    ],
+                },
+                {
+                    text: '高阶教程',
+                    children: [
+                        '/cms/tutorial-permission-system.md',
+                        '/cms/tutorial-login-security.md',
+                        '/cms/tutorial-crypto-toolkit.md',
+                        '/cms/tutorial-search.md',
+                        '/cms/tutorial-task-scheduling.md',
+                        '/cms/tutorial-sse-push.md',
+                        '/cms/tutorial-performance-monitoring.md',
+                        '/cms/tutorial-dict-system.md',
+                    ],
+                },
+                {
+                    text: '综合教程',
+                    children: [
+                        '/cms/tutorial-fullstack-integration.md',
+                        '/cms/tutorial-deploy.md',
                     ],
                 },
             ],
@@ -121,10 +180,73 @@ export default defineUserConfig({
             // GoWind UBA 侧边栏
             '/uba/': [
                 {
-                    text: 'GoWind UBA',
+                    text: '介绍',
                     children: [
                         '/uba/intro.md',
                         '/uba/installation.md',
+                    ],
+                },
+                {
+                    text: '后端文档',
+                    children: [
+                        '/uba/backend-architecture.md',
+                        '/uba/backend-modules.md',
+                        '/uba/backend-api.md',
+                        '/uba/backend-config-deploy.md',
+                        '/uba/backend-extension.md',
+                    ],
+                },
+                {
+                    text: '前端文档',
+                    children: [
+                        '/uba/frontend-architecture.md',
+                        '/uba/frontend-modules.md',
+                    ],
+                },
+                {
+                    text: '入门教程',
+                    children: [
+                        '/uba/tutorial-sdk-integration.md',
+                        '/uba/tutorial-data-pipeline.md',
+                        '/uba/tutorial-codegen.md',
+                    ],
+                },
+                {
+                    text: '核心教程',
+                    children: [
+                        '/uba/tutorial-event-analysis.md',
+                        '/uba/tutorial-funnel-analysis.md',
+                        '/uba/tutorial-session-analysis.md',
+                        '/uba/tutorial-path-analysis.md',
+                        '/uba/tutorial-user-profile.md',
+                        '/uba/tutorial-retention-analysis.md',
+                    ],
+                },
+                {
+                    text: '进阶教程',
+                    children: [
+                        '/uba/tutorial-user-segmentation.md',
+                        '/uba/tutorial-risk-detection.md',
+                        '/uba/tutorial-olap-engine.md',
+                        '/uba/tutorial-id-mapping.md',
+                        '/uba/tutorial-webhook-alert.md',
+                        '/uba/tutorial-superset-integration.md',
+                    ],
+                },
+                {
+                    text: '高阶教程',
+                    children: [
+                        '/uba/tutorial-task-scheduling.md',
+                        '/uba/tutorial-sse-push.md',
+                        '/uba/tutorial-permission-system.md',
+                        '/uba/tutorial-login-security.md',
+                    ],
+                },
+                {
+                    text: '综合教程',
+                    children: [
+                        '/uba/tutorial-fullstack-integration.md',
+                        '/uba/tutorial-deploy.md',
                     ],
                 },
             ],

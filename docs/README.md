@@ -7,10 +7,15 @@ actions:
   - text: 快速开始 →
     link: /guide/getting-started.md
     type: primary
+  - text: 框架文档
+    link: /framework/intro.md
+    type: secondary
   - text: 产品矩阵
     link: /admin/intro.md
     type: secondary
 features:
+  - title: GoWind 框架
+    details: 微服务积木式框架（go-wind + plugins + bootstrap），核心不到 500 行，100+ 插件覆盖 8 大领域，YAML 声明式装配，零代码启动
   - title: GoWind Admin
     details: 轻量级企业级后台管理系统，内置多租户隔离、细粒度权限控制、数据可视化、API 管理等核心能力，开箱即用
   - title: GoWind CMS

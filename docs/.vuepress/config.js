@@ -22,6 +22,7 @@ export default defineUserConfig({
         // 导航栏链接
         navbar: [
             {text: '首页', link: '/'},
+            {text: '框架', link: '/framework/intro.md'},
             {text: 'GoWind Admin', link: '/admin/intro.md'},
             {text: 'GoWind CMS', link: '/cms/intro.md'},
             {text: 'GoWind IM', link: '/im/intro.md'},
@@ -39,6 +40,70 @@ export default defineUserConfig({
                         '/guide/getting-started.md',
                         '/guide/contribution.md',
                         '/guide/faq.md',
+                    ],
+                },
+            ],
+            // 框架层侧边栏
+            '/framework/': [
+                {
+                    text: '介绍',
+                    children: [
+                        '/framework/intro.md',
+                        '/framework/architecture.md',
+                    ],
+                },
+                {
+                    text: 'go-wind 核心',
+                    children: [
+                        '/framework/core-intro.md',
+                        '/framework/core-lifecycle.md',
+                        '/framework/core-context.md',
+                        '/framework/core-transport.md',
+                        '/framework/core-logging.md',
+                    ],
+                },
+                {
+                    text: 'go-wind-plugins 插件',
+                    children: [
+                        '/framework/plugins-intro.md',
+                        '/framework/plugins-config.md',
+                        '/framework/plugins-registry.md',
+                        '/framework/plugins-log.md',
+                        '/framework/plugins-transport.md',
+                        '/framework/plugins-broker.md',
+                        '/framework/plugins-encoding.md',
+                        '/framework/plugins-security.md',
+                        '/framework/plugins-tracer.md',
+                        '/framework/plugins-cache.md',
+                        '/framework/plugins-oss.md',
+                        '/framework/plugins-ratelimit.md',
+                        '/framework/plugins-metrics.md',
+                        '/framework/plugins-ai.md',
+                        '/framework/plugins-workflow.md',
+                        '/framework/plugins-database.md',
+                        '/framework/plugins-gateway.md',
+                        '/framework/plugins-compress.md',
+                        '/framework/plugins-template.md',
+                    ],
+                },
+                {
+                    text: 'go-wind-bootstrap 启动器',
+                    children: [
+                        '/framework/bootstrap-intro.md',
+                        '/framework/bootstrap-config.md',
+                        '/framework/bootstrap-spi.md',
+                        '/framework/bootstrap-middleware.md',
+                        '/framework/bootstrap-cli.md',
+                        '/framework/bootstrap-examples.md',
+                    ],
+                },
+                {
+                    text: '教程',
+                    children: [
+                        '/framework/tutorial-quick-start.md',
+                        '/framework/tutorial-custom-plugin.md',
+                        '/framework/tutorial-multi-transport.md',
+                        '/framework/tutorial-migration.md',
                     ],
                 },
             ],

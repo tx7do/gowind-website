@@ -53,7 +53,7 @@ views/
 
 ### 2. 认证 API
 
-认证相关 API 位于 `api/service/auth.ts`：
+认证相关 API 位于 `api/composables/auth.ts`：
 
 | API | 说明 |
 |-----|------|
@@ -65,10 +65,10 @@ views/
 
 ### 3. 认证 Composable
 
-`api/composables/auth.ts` 提供认证相关的 Vue Composable，封装了：
-- 登录状态管理
-- Token 自动刷新
-- 登出清理
+`api/composables/auth.ts` 提供认证相关的 Vue Query hooks，封装了：
+- 登录/登出/注册（useMutation）
+- 验证码获取与验证
+- Token 刷新
 
 ## 三、仪表盘（Dashboard）
 
@@ -79,7 +79,7 @@ views/
 - 系统公告
 - 数据图表展示
 
-仪表盘 API 位于 `api/service/admin-portal.ts`。
+仪表盘 API 位于 `api/composables/admin-portal.ts`。
 
 ## 四、组织与人员管理（OPM）
 
@@ -98,7 +98,7 @@ views/
 - 设置主管
 - 一键登录指定用户
 
-**API 文件**：`api/service/user.ts`、`api/composables/user.ts`
+**API 文件**：`api/composables/user.ts`
 
 ### 2. 组织管理
 
@@ -110,7 +110,7 @@ views/
 - 拖拽排序
 - 组织路径展示
 
-**API 文件**：`api/service/org-unit.ts`、`api/composables/org-unit.ts`
+**API 文件**：`api/composables/org-unit.ts`
 
 ### 3. 职位管理
 
@@ -121,7 +121,7 @@ views/
 - 创建/编辑/删除职位
 - 职位作为用户标签关联
 
-**API 文件**：`api/service/position.ts`、`api/composables/position.ts`
+**API 文件**：`api/composables/position.ts`
 
 ## 五、权限管理
 
@@ -137,7 +137,7 @@ views/
 - 设置角色数据权限范围
 - 批量添加/移除员工
 
-**API 文件**：`api/service/role.ts`、`api/composables/role.ts`
+**API 文件**：`api/composables/role.ts`
 
 ### 2. 权限管理
 
@@ -150,7 +150,7 @@ views/
 - 权限关联 API 接口
 - 权限关联菜单
 
-**API 文件**：`api/service/permission.ts`、`api/composables/permission.ts`
+**API 文件**：`api/composables/permission.ts`
 
 ### 3. 菜单管理
 
@@ -163,7 +163,7 @@ views/
 - 菜单图标选择
 - 菜单排序
 
-**API 文件**：`api/service/menu.ts`、`api/composables/menu.ts`
+**API 文件**：`api/composables/menu.ts`
 
 ### 4. API 接口管理
 
@@ -176,7 +176,7 @@ views/
 - 树形列表展示
 - 配置操作日志的请求参数和响应结果
 
-**API 文件**：`api/service/api.ts`、`api/composables/api.ts`
+**API 文件**：`api/composables/api.ts`
 
 ## 六、系统管理
 
@@ -191,7 +191,7 @@ views/
 - 数据导入和导出
 - 国际化支持
 
-**API 文件**：`api/service/dict.ts`、`api/composables/dict.ts`
+**API 文件**：`api/composables/dict.ts`
 
 ### 2. 文件管理
 
@@ -205,7 +205,7 @@ views/
 - 删除文件
 - 图片大图预览
 
-**API 文件**：`api/service/file.ts`、`api/service/file-transfer.ts`
+**API 文件**：`api/composables/file.ts`、`api/composables/file-transfer.ts`
 
 ### 3. 任务调度
 
@@ -218,7 +218,7 @@ views/
 - 立即执行任务
 - 查看任务运行日志
 
-**API 文件**：`api/service/task.ts`、`api/composables/task.ts`
+**API 文件**：`api/composables/task.ts`
 
 ### 4. 登录策略
 
@@ -231,7 +231,7 @@ views/
 - 时间限制配置
 - 登录失败锁定策略
 
-**API 文件**：`api/service/login-policy.ts`、`api/composables/login-policy.ts`
+**API 文件**：`api/composables/login-policy.ts`
 
 ### 5. 语言管理
 
@@ -241,7 +241,7 @@ views/
 - 系统支持的语言管理
 - 国际化基础配置
 
-**API 文件**：`api/service/language.ts`、`api/composables/language.ts`
+**API 文件**：`api/composables/language.ts`
 
 ## 七、租户管理
 
@@ -254,7 +254,7 @@ views/
 - 禁用/启用租户
 - 一键登录租户管理员
 
-**API 文件**：`api/service/tenant.ts`、`api/composables/tenant.ts`
+**API 文件**：`api/composables/tenant.ts`
 
 ## 八、站内信
 
@@ -271,7 +271,7 @@ views/
 - 标为已读
 - 全部已读
 
-**API 文件**：`api/service/internal-message.ts`、`api/composables/internal-message.ts`
+**API 文件**：`api/composables/internal-message.ts`
 
 ### 2. 消息分类
 
@@ -281,7 +281,7 @@ views/
 - 二级自定义消息分类管理
 - 消息分类选择
 
-**API 文件**：`api/service/internal-message.ts`
+**API 文件**：`api/composables/internal-message.ts`
 
 ## 九、日志管理
 
@@ -330,77 +330,90 @@ views/
 - 查看最后登录信息
 - 修改密码
 
-**API 文件**：`api/service/user-profile.ts`、`api/composables/user-profile.ts`
+**API 文件**：`api/composables/user-profile.ts`
 
 ## 十一、API 层开发规范
 
-### 1. Service 层
+### 1. Composables 层（Vue Query hooks）
 
-每个业务模块对应一个 Service 文件，封装所有 HTTP 请求：
+每个业务模块对应一个 composable 文件，基于 Vue Query 提供 `use*`（组件内 hooks）、`fetch*`（组件外 Promise 方法）和枚举工具三种导出：
 
 ```typescript
-// api/service/user.ts
-import { request } from '@/transport'
+// api/composables/role.ts
 import type {
-  CreateUserRequest,
-  UpdateUserRequest,
-  GetUserResponse,
-  ListUserResponse,
-} from '@/api/generated'
+  permissionservicev1_ListRoleResponse,
+  permissionservicev1_Role,
+} from '#/api/generated/admin/service/v1';
+import { useMutation, useQuery } from '@tanstack/vue-query';
+import { apiClient } from '#/api/client';
+import { queryClient } from '#/plugins/vue-query';
+import { makeUpdateMask, type PaginationQuery } from '#/transport/rest';
 
-export function createUser(data: CreateUserRequest) {
-  return request.post('/admin/v1/user', data)
+// 组件内使用 — Query hook（读取数据）
+export function useListRoles(query: PaginationQuery) {
+  return useQuery({
+    queryKey: ['listRoles', query],
+    queryFn: () => apiClient.roleService.List(query.toRawParams()),
+  });
 }
 
-export function updateUser(id: number, data: UpdateUserRequest) {
-  return request.put(`/admin/v1/user/${id}`, data)
+// 组件外使用 — fetch 方法（Store / 路由守卫等）
+export async function fetchListRoles(params: PaginationQuery) {
+  return queryClient.fetchQuery({
+    queryKey: ['listRoles', params],
+    queryFn: () => apiClient.roleService.List(params.toRawParams()),
+    retry: 0,
+  });
 }
 
-export function getUser(id: number): Promise<GetUserResponse> {
-  return request.get(`/admin/v1/user/${id}`)
-}
-
-export function listUser(params?: ListUserRequest): Promise<ListUserResponse> {
-  return request.get('/admin/v1/user', { params })
+// 写操作 — Mutation hook
+export function useCreateRole() {
+  return useMutation({
+    mutationFn: (values) =>
+      apiClient.roleService.Create({ data: { ...values } as permissionservicev1_Role }),
+  });
 }
 ```
 
-### 2. Composable 层
+### 2. 核心操作模式
 
-在 Service 层基础上封装 Vue Composable，提供响应式状态：
+#### 分页查询
+
+所有列表查询统一使用 `PaginationQuery` 封装分页、搜索、排序参数：
 
 ```typescript
-// api/composables/user.ts
-import { ref } from 'vue'
-import * as userApi from '@/api/service/user'
+import { PaginationQuery } from '#/transport/rest';
 
-export function useUserList() {
-  const loading = ref(false)
-  const userList = ref([])
-  const total = ref(0)
+const query = new PaginationQuery({
+  paging: { page: 1, pageSize: 20 },
+  formValues: { status: 'NORMAL' },  // 搜索条件（自动过滤空值）
+  orderBy: ['-created_at'],           // 排序（"-"前缀 = 降序）
+});
 
-  async function fetchList(params?: any) {
-    loading.value = true
-    try {
-      const res = await userApi.listUser(params)
-      userList.value = res.items
-      total.value = res.total
-    } finally {
-      loading.value = false
-    }
-  }
+const { data, isLoading } = useListUsers(query);
+```
 
-  return { loading, userList, total, fetchList }
-}
+#### 更新操作（自动生成 updateMask）
+
+更新时只需传入变化的字段，内部自动生成 `updateMask`：
+
+```typescript
+const { mutateAsync } = useUpdateUser();
+await mutateAsync({
+  id: 1,
+  values: { name: '李四', email: 'lisi@example.com' },  // 只传需要更新的字段
+});
+// 内部自动生成 updateMask: "name,email,id"
 ```
 
 ### 3. 添加新页面的流程
 
-1. 在 `api/service/` 下创建 API 请求函数
-2. 在 `api/composables/` 下创建 Vue Composable
-3. 在 `views/app/` 下创建页面组件
-4. 在 `router/routes/modules/` 下注册路由
-5. 在后端菜单管理中配置菜单和权限
+1. 确认 `make ts` 已生成 generated 层的 Service Client
+2. 在 `api/composables/` 下创建 Vue Query hooks 文件
+3. 在 `api/composables/index.ts` 中添加导出
+4. 在 `views/app/` 下创建页面组件
+5. 在 `router/routes/modules/` 下注册路由
+6. 在后端菜单管理中配置菜单和权限
 
 ## 十二、相关文档
 

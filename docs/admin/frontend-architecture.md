@@ -35,10 +35,11 @@ frontend/admin/vue-vben/
 ├── apps/                       # 应用目录
 │   └── admin/                  # 管理端应用
 │       ├── src/
-│       │   ├── api/            # API 请求层
-│       │   │   ├── service/    # 服务端 API 定义
-│       │   │   ├── composables/ # Vue Composable 封装
-│       │   │   └── generated/  # 自动生成的 TypeScript 代码
+│       │   ├── api/            # API 请求层（两层架构）
+│       │   │   ├── client.ts   # ApiClient 单例（ClientTransport 适配器）
+│       │   │   ├── index.ts    # 统一导出入口
+│       │   │   ├── composables/ # Vue Query hooks 层（面向业务组件）
+│       │   │   └── generated/  # Protobuf 自动生成的类型 + ApiClient + Service Client
 │       │   ├── views/          # 业务页面
 │       │   │   ├── app/        # 应用页面模块
 │       │   │   ├── dashboard/  # 仪表盘
@@ -206,55 +207,179 @@ pnpm dev
 
 ## 五、前端 API 层设计
 
-三个版本的前端共享类似的 API 层设计思路。
+三个版本的前端共享类似的 API 层设计思路，均采用 **两层架构** + **Vue Query** 数据获取方案。
 
-### 1. Vben 版 API 层
-
-Vben 版的 API 层采用 **三层结构**：
+### 1. 两层架构总览
 
 ```
 api/
-├── generated/          # Protobuf 自动生成的 TypeScript 类型
-├── service/            # 原始 API 请求函数（基于生成的类型）
-└── composables/        # Vue Composable 封装（带状态管理）
+├── generated/          # 第 1 层：Protobuf 自动生成的 TypeScript 类型 + ApiClient + Service Client
+│                        # （由 protoc-gen-typescript-http 生成，不要手动编辑）
+├── client.ts           # 适配层：创建 apiClient 单例，将 requestApi 适配为 ClientTransport
+├── index.ts            # 统一导出入口
+└── composables/        # 第 2 层：Vue Query hooks 层，面向业务组件的最终 API
+                         #   use*   = 组件内使用的 Vue Query hook（useQuery / useMutation）
+                         #   fetch* = 组件外使用的 Promise 方法（Store、路由守卫等）
+                         #   枚举工具 = 各模块的状态/颜色映射函数
 ```
 
-#### Service 层
+> **架构演进说明**：旧版本采用三层结构（generated → service → composables），其中 service 层手写 HTTP 请求函数。新版本移除了 service 层，改由 generated 层自动生成的 Service Client 直接对接，composables 层则升级为基于 Vue Query 的 hooks。
 
-直接封装 HTTP 请求，对应后端的每个 Service：
+### 2. 第 1 层：generated + client.ts
+
+#### generated（自动生成）
+
+由 `protoc-gen-typescript-http` 根据 Protobuf 定义生成，包含：
+
+- **类型定义**：`identityservicev1_User`、`permissionservicev1_Role` 等
+- **请求/响应类型**：`identityservicev1_ListUserResponse`、`permissionservicev1_CreateUserRequest` 等
+- **ApiClient 类**：统一入口，通过延迟初始化的 getter 暴露所有 Service Client
+- **Service Client 工厂**：`createUserServiceClient(transport)` 等
 
 ```typescript
-// api/service/user.ts
-export function getUserList(params: GetUserListRequest) {
-  return request.get<GetUserListResponse>('/admin/v1/user', { params })
+// ApiClient 提供的所有 Service Client getter
+apiClient.userService              // 用户管理
+apiClient.authenticationService    // 认证服务
+apiClient.roleService              // 角色管理
+apiClient.dictTypeService          // 字典类型
+// ... 共 20+ 个 Service Client
+```
+
+**命名规则**：`{service}v1_{MessageName}`
+- `identityservicev1_` — 用户/身份相关
+- `permissionservicev1_` — 权限/角色/菜单相关
+- `dictservicev1_` — 字典相关
+- `authenticationservicev1_` — 认证相关
+
+#### client.ts（适配层）
+
+创建全局唯一的 `apiClient` 单例，将已有的 `requestApi`（基于 axios 的 `RequestClient`）适配为 `ClientTransport` 接口：
+
+```typescript
+// client.ts 核心逻辑
+import { createApiClient, type ClientTransport } from '#/api/generated/admin/service/v1';
+import { requestApi } from '#/transport/rest';
+
+const transport: ClientTransport = {
+  unary(path, method, body, _meta) {
+    return requestApi({ body, method, path });
+  },
+  serverStream(path, _meta) { throw new Error('not supported'); },
+  duplexStream(path, _meta) { throw new Error('not supported'); },
+};
+
+export const apiClient = createApiClient(transport);
+```
+
+这样所有通过 `apiClient` 发出的请求都会经过 `requestApi`，保留 Token 注入、错误拦截、自动刷新等全部已有逻辑。
+
+### 3. 第 2 层：composables（Vue Query hooks）
+
+面向业务组件的最终 API 层，引入 [Vue Query](https://tanstack.com/query)（TanStack Query）提供数据获取、缓存和状态管理能力。每个 composable 文件提供三种导出：
+
+#### `use*` — Vue Query hooks（组件内使用）
+
+```typescript
+// Query hooks（读取数据）
+const { data, isLoading, refetch } = useListRoles(query);
+const { data } = useGetRole({ id: 1 });
+
+// Mutation hooks（写操作）
+const { mutateAsync, isPending } = useCreateRole();
+const { mutateAsync } = useUpdateRole();
+const { mutateAsync } = useDeleteRole();
+```
+
+#### `fetch*` — Promise 方法（Store / 路由守卫等外部调用）
+
+```typescript
+// 不依赖组件 setup 上下文，内部通过 queryClient.fetchQuery 实现
+const roles = await fetchListRoles(params);
+```
+
+#### 枚举工具 — 状态映射函数
+
+```typescript
+import { userStatusToColor, userStatusToName } from '#/api';
+
+const color = userStatusToColor('NORMAL');  // '#4096FF'
+const label = userStatusToName('NORMAL');   // '正常'
+```
+
+#### 典型 composable 文件结构
+
+每个 composable 文件直接导入 `apiClient` 并调用对应的 Service Client：
+
+```typescript
+// composables/role.ts
+import { useMutation, useQuery } from '@tanstack/vue-query';
+import { apiClient } from '#/api/client';
+import { queryClient } from '#/plugins/vue-query';
+import { makeUpdateMask, type PaginationQuery } from '#/transport/rest';
+
+// 组件内使用
+export function useListRoles(query: PaginationQuery) {
+  return useQuery({
+    queryKey: ['listRoles', query],
+    queryFn: () => apiClient.roleService.List(query.toRawParams()),
+  });
+}
+
+// 组件外使用
+export async function fetchListRoles(params: PaginationQuery) {
+  return queryClient.fetchQuery({
+    queryKey: ['listRoles', params],
+    queryFn: () => apiClient.roleService.List(params.toRawParams()),
+    retry: 0,
+  });
+}
+
+// 写操作
+export function useCreateRole() {
+  return useMutation({
+    mutationFn: (values) => apiClient.roleService.Create({ data: { ...values } }),
+  });
 }
 ```
 
-#### Composable 层
+### 4. 分页查询（PaginationQuery）
 
-在 Service 层基础上封装为 Vue Composable，提供响应式状态管理：
+所有列表查询统一使用 `PaginationQuery` 类（位于 `transport/rest/pagination.ts`），封装分页参数、搜索条件、排序和字段过滤：
 
 ```typescript
-// api/composables/user.ts
-export function useUserList() {
-  const loading = ref(false)
-  const data = ref<User[]>([])
+import { PaginationQuery } from '#/transport/rest';
 
-  async function fetchList(params: GetUserListRequest) {
-    loading.value = true
-    try {
-      const res = await getUserList(params)
-      data.value = res.items
-    } finally {
-      loading.value = false
-    }
-  }
+const query = new PaginationQuery({
+  paging: { page: 1, pageSize: 20 },           // 分页参数
+  formValues: { status: 'NORMAL', name: '张' }, // 搜索条件（自动过滤空值）
+  orderBy: ['-created_at'],                     // 排序（"-"前缀 = 降序）
+  fieldMask: 'id,name,status',                  // 只返回指定字段
+});
 
-  return { loading, data, fetchList }
-}
+const { data } = useListUsers(query);
 ```
 
-### 2. 代码自动生成
+### 5. Vue Query 全局配置
+
+全局 QueryClient 配置（`src/plugins/vue-query.ts`）：
+
+| 配置项 | 值 | 说明 |
+|---|---|---|
+| `staleTime` | `60_000`（60s） | 数据在 60 秒内视为新鲜，不会重新请求 |
+| `retry` | `false` | 请求失败不自动重试 |
+| `refetchOnWindowFocus` | `false` | 窗口聚焦时不自动刷新 |
+| `refetchOnReconnect` | `false` | 网络重连时不自动刷新 |
+
+### 6. 传输层（transport）
+
+前端传输层位于 `src/transport/` 目录，分为两个子模块：
+
+| 目录 | 说明 |
+|---|---|
+| `transport/rest/` | HTTP REST 传输层，包含 `RequestClient`（axios 封装）、`requestApi`、`PaginationQuery`、预设拦截器等 |
+| `transport/sse/` | SSE（Server-Sent Events）传输层，用于服务端推送场景 |
+
+### 7. 代码自动生成
 
 前端 TypeScript 类型由后端 Protobuf 定义自动生成：
 

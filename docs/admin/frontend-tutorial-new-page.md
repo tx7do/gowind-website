@@ -13,176 +13,129 @@ make ts
 
 生成的 TypeScript 类型定义会被前端自动引用。
 
-## 二、步骤 1：创建 API Service 层
+## 二、步骤 1：创建 API Composables 层
 
-### 2.1 创建 Service 文件
+前端采用 **两层架构**（generated + client → composables）+ **Vue Query** 数据获取方案。generated 层由 `make ts` 自动生成，无需手动编写。开发者只需创建 composables 层的 Vue Query hooks。
 
-在 `frontend/admin/vue-vben/apps/admin/src/api/service/` 目录下创建 `article.ts`：
+### 2.1 确认 generated 层已就绪
 
-```typescript
-import { requestClient } from '#/api/request';
-import type {
-  CreateArticleRequest,
-  UpdateArticleRequest,
-  GetArticleRequest,
-  DeleteArticleRequest,
-  ListArticleRequest,
-  Article,
-  ListArticleResponse,
-} from '@vben/api/generated/article/service/v1/article';
+执行 `make ts` 后，确认 `src/api/generated/admin/service/v1/` 中已包含：
 
-/**
- * 创建文章
- */
-export function createArticle(data: CreateArticleRequest) {
-  return requestClient.post<Article>('/admin/v1/article', data);
-}
+- `articleservicev1_*` 类型定义（如 `articleservicev1_Article`、`articleservicev1_ListArticleResponse`）
+- ApiClient 中已有 `articleService` getter
 
-/**
- * 更新文章
- */
-export function updateArticle(id: number, data: UpdateArticleRequest) {
-  return requestClient.put<Article>(`/admin/v1/article/${id}`, data);
-}
-
-/**
- * 删除文章
- */
-export function deleteArticle(id: number) {
-  return requestClient.delete(`/admin/v1/article/${id}`);
-}
-
-/**
- * 获取文章详情
- */
-export function getArticle(id: number) {
-  return requestClient.get<Article>(`/admin/v1/article/${id}`);
-}
-
-/**
- * 文章列表查询
- */
-export function listArticle(params?: ListArticleRequest) {
-  return requestClient.get<ListArticleResponse>('/admin/v1/article', { params });
-}
-```
-
-### 2.2 导出 API
-
-在 `api/service/index.ts` 中添加导出：
-
-```typescript
-export * from './article';
-```
-
-## 三、步骤 2：创建 Composable 层
-
-### 3.1 创建 Composable 文件
+### 2.2 创建 Composables 文件
 
 在 `frontend/admin/vue-vben/apps/admin/src/api/composables/` 目录下创建 `article.ts`：
 
 ```typescript
-import { ref } from 'vue';
-import { message } from 'ant-design-vue';
-import * as articleApi from '../service/article';
-import type { Article, ListArticleRequest } from '@vben/api/generated/article/service/v1/article';
+import type {
+  articleservicev1_Article,
+  articleservicev1_ListArticleResponse,
+} from '#/api/generated/admin/service/v1';
+import {
+  useMutation,
+  type UseMutationOptions,
+  useQuery,
+  type UseQueryOptions,
+} from '@tanstack/vue-query';
+import { apiClient } from '#/api/client';
+import { queryClient } from '#/plugins/vue-query';
+import { makeUpdateMask, type PaginationQuery } from '#/transport/rest';
 
-/**
- * 文章列表 Composable
- */
-export function useArticleList() {
-  const loading = ref(false);
-  const articleList = ref<Article[]>([]);
-  const total = ref(0);
-
-  async function fetchList(params?: ListArticleRequest) {
-    loading.value = true;
-    try {
-      const res = await articleApi.listArticle({
-        page: params?.page || 1,
-        page_size: params?.page_size || 10,
-        keyword: params?.keyword,
-        status: params?.status,
-      });
-      articleList.value = res.items || [];
-      total.value = res.total || 0;
-    } catch (error) {
-      message.error('获取文章列表失败');
-      console.error(error);
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  return {
-    loading,
-    articleList,
-    total,
-    fetchList,
-  };
+// ==============================
+// 文章列表查询（组件内使用）
+// ==============================
+export function useListArticles(
+  query: PaginationQuery,
+  options?: UseQueryOptions<articleservicev1_ListArticleResponse, Error>,
+) {
+  return useQuery({
+    queryKey: ['listArticles', query],
+    queryFn: () => apiClient.articleService.List(query.toRawParams()),
+    ...options,
+  });
 }
 
-/**
- * 文章详情 Composable
- */
-export function useArticleDetail() {
-  const loading = ref(false);
-  const article = ref<Article | null>(null);
+// ==============================
+// 文章列表查询（组件外使用 — Store / 路由守卫等）
+// ==============================
+export async function fetchListArticles(params: PaginationQuery) {
+  return queryClient.fetchQuery({
+    queryKey: ['listArticles', params],
+    queryFn: () => apiClient.articleService.List(params.toRawParams()),
+    retry: 0,
+  });
+}
 
-  async function fetchDetail(id: number) {
-    loading.value = true;
-    try {
-      const res = await articleApi.getArticle(id);
-      article.value = res;
-    } catch (error) {
-      message.error('获取文章详情失败');
-      console.error(error);
-    } finally {
-      loading.value = false;
-    }
-  }
+// ==============================
+// 获取文章详情（组件内使用）
+// ==============================
+export function useGetArticle(
+  req: { id: number },
+  options?: UseQueryOptions<articleservicev1_Article, Error>,
+) {
+  return useQuery({
+    queryKey: ['getArticle', req],
+    queryFn: () => apiClient.articleService.Get(req),
+    ...options,
+  });
+}
 
-  async function saveArticle(data: any) {
-    loading.value = true;
-    try {
-      if (data.id) {
-        await articleApi.updateArticle(data.id, { id: data.id, data });
-        message.success('更新成功');
-      } else {
-        await articleApi.createArticle({ data });
-        message.success('创建成功');
-      }
-    } catch (error) {
-      message.error('保存失败');
-      console.error(error);
-      throw error;
-    } finally {
-      loading.value = false;
-    }
-  }
+// ==============================
+// 创建文章（Mutation）
+// ==============================
+export function useCreateArticle(
+  options?: UseMutationOptions<object, Error, Record<string, any>>,
+) {
+  return useMutation({
+    mutationFn: (values) =>
+      apiClient.articleService.Create({ data: { ...values } as articleservicev1_Article }),
+    ...options,
+  });
+}
 
-  async function removeArticle(id: number) {
-    try {
-      await articleApi.deleteArticle(id);
-      message.success('删除成功');
-    } catch (error) {
-      message.error('删除失败');
-      console.error(error);
-      throw error;
-    }
-  }
+// ==============================
+// 更新文章（自动生成 updateMask）
+// ==============================
+export function useUpdateArticle(
+  options?: UseMutationOptions<
+    object,
+    Error,
+    { id: number; values: Record<string, any> }
+  >,
+) {
+  return useMutation({
+    mutationFn: ({ id, values }) =>
+      apiClient.articleService.Update({
+        id,
+        data: { ...values } as any,
+        updateMask: makeUpdateMask(Object.keys(values ?? {})),
+      }),
+    ...options,
+  });
+}
 
-  return {
-    loading,
-    article,
-    fetchDetail,
-    saveArticle,
-    removeArticle,
-  };
+// ==============================
+// 删除文章（Mutation）
+// ==============================
+export function useDeleteArticle(
+  options?: UseMutationOptions<object, Error, number>,
+) {
+  return useMutation({
+    mutationFn: (id) => apiClient.articleService.Delete({ id }),
+    ...options,
+  });
 }
 ```
 
-### 3.2 导出 Composable
+> **关键说明**：
+> - `use*` 函数返回 Vue Query 的响应式状态（`data`、`isLoading`、`error` 等），组件内使用
+> - `fetch*` 函数返回 Promise，适合在 Store、路由守卫等非组件上下文中使用
+> - 更新操作通过 `makeUpdateMask` 自动生成 `updateMask`，只需传入变化的字段
+> - 所有请求通过 `apiClient` 单例发出，自动复用已有的 Token 注入、错误拦截等逻辑
+
+### 2.3 注册导出
 
 在 `api/composables/index.ts` 中添加导出：
 
@@ -190,9 +143,9 @@ export function useArticleDetail() {
 export * from './article';
 ```
 
-## 四、步骤 3：创建页面组件
+## 三、步骤 2：创建页面组件
 
-### 4.1 创建目录结构
+### 2.1 创建目录结构
 
 在 `frontend/admin/vue-vben/apps/admin/src/views/app/` 目录下创建 `article/` 目录：
 
@@ -202,87 +155,69 @@ views/app/article/
 └── form.vue           # 表单页（创建/编辑）
 ```
 
-### 4.2 创建列表页
+### 2.2 创建列表页
 
-创建 `views/app/article/index.vue`：
+创建 `views/app/article/index.vue`，使用 `useListArticles` 和 `useDeleteArticle` Vue Query hooks：
 
 ```vue
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { computed, reactive } from 'vue';
 import { Page } from '@vben/common-ui';
-import { Button, Table, Space, Tag, Input, Select } from 'ant-design-vue';
+import { Button, Table, message, Modal } from 'ant-design-vue';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons-vue';
 import { useRouter } from 'vue-router';
-import { useArticleList } from '#/api/composables/article';
-import type { Article } from '@vben/api/generated/article/service/v1/article';
+import {
+  useListArticles,
+  useDeleteArticle,
+} from '#/api';
+import { PaginationQuery } from '#/transport/rest';
 
 const router = useRouter();
-const { loading, articleList, total, fetchList } = useArticleList();
+const { mutateAsync: deleteArticle } = useDeleteArticle();
 
-// 搜索条件
-const searchParams = ref({
+// 搜索条件（响应式，PaginationQuery 会自动感知变化并重新查询）
+const searchParams = reactive({
   keyword: '',
   status: undefined as number | undefined,
   page: 1,
-  page_size: 10,
+  pageSize: 10,
 });
+
+// 构建 PaginationQuery（响应式，参数变化时自动重新请求）
+const query = computed(() =>
+  new PaginationQuery({
+    paging: { page: searchParams.page, pageSize: searchParams.pageSize },
+    formValues: { keyword: searchParams.keyword, status: searchParams.status },
+  }),
+);
+
+// Vue Query 自动管理加载状态和缓存
+const { data, isLoading } = useListArticles(query);
+
+// 表格数据（自动响应式）
+const dataSource = computed(() => data.value?.items ?? []);
+const total = computed(() => data.value?.total ?? 0);
 
 // 表格列定义
 const columns = [
   { title: 'ID', dataIndex: 'id', width: 80 },
   { title: '标题', dataIndex: 'title', ellipsis: true },
-  { 
-    title: '状态', 
-    dataIndex: 'status',
-    width: 100,
-    customRender: ({ record }: { record: Article }) => {
-      const statusMap: Record<number, { text: string; color: string }> = {
-        0: { text: '草稿', color: 'default' },
-        1: { text: '已发布', color: 'success' },
-        2: { text: '已下架', color: 'error' },
-      };
-      const status = statusMap[record.status] || { text: '未知', color: 'default' };
-      return <Tag color={status.color}>{status.text}</Tag>;
-    },
-  },
+  { title: '状态', dataIndex: 'status', width: 100 },
   { title: '作者ID', dataIndex: 'author_id', width: 100 },
   { title: '创建时间', dataIndex: 'created_at', width: 180 },
-  {
-    title: '操作',
-    width: 200,
-    customRender: ({ record }: { record: Article }) => (
-      <Space>
-        <Button type="link" size="small" onClick={() => handleEdit(record.id)}>
-          <EditOutlined /> 编辑
-        </Button>
-        <Button type="link" danger size="small" onClick={() => handleDelete(record.id)}>
-          <DeleteOutlined /> 删除
-        </Button>
-      </Space>
-    ),
-  },
+  { title: '操作', width: 200, key: 'action' },
 ];
-
-// 加载数据
-async function loadData() {
-  await fetchList(searchParams.value);
-}
 
 // 搜索
 function handleSearch() {
-  searchParams.value.page = 1;
-  loadData();
+  searchParams.page = 1;
 }
 
 // 重置
 function handleReset() {
-  searchParams.value = {
-    keyword: '',
-    status: undefined,
-    page: 1,
-    page_size: 10,
-  };
-  loadData();
+  searchParams.keyword = '';
+  searchParams.status = undefined;
+  searchParams.page = 1;
 }
 
 // 编辑
@@ -292,7 +227,8 @@ function handleEdit(id: number) {
 
 // 删除
 async function handleDelete(id: number) {
-  // TODO: 实现删除逻辑
+  await deleteArticle(id);
+  message.success('删除成功');
 }
 
 // 新建
@@ -302,14 +238,9 @@ function handleCreate() {
 
 // 分页变化
 function handlePageChange(page: number, pageSize: number) {
-  searchParams.value.page = page;
-  searchParams.value.page_size = pageSize;
-  loadData();
+  searchParams.page = page;
+  searchParams.pageSize = pageSize;
 }
-
-onMounted(() => {
-  loadData();
-});
 </script>
 
 <template>
@@ -342,42 +273,71 @@ onMounted(() => {
     <!-- 表格 -->
     <Table
       :columns="columns"
-      :data-source="articleList"
-      :loading="loading"
+      :data-source="dataSource"
+      :loading="isLoading"
       :pagination="{
         current: searchParams.page,
-        pageSize: searchParams.page_size,
+        pageSize: searchParams.pageSize,
         total: total,
         showSizeChanger: true,
       }"
       @change="handlePageChange"
-    />
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'action'">
+          <Button type="link" size="small" @click="handleEdit(record.id)">
+            <EditOutlined /> 编辑
+          </Button>
+          <Button type="link" danger size="small" @click="handleDelete(record.id)">
+            <DeleteOutlined /> 删除
+          </Button>
+        </template>
+      </template>
+    </Table>
   </Page>
 </template>
 ```
 
-### 4.3 创建表单页
+> **Vue Query 优势**：`useListArticles(query)` 会自动管理加载状态（`isLoading`）、缓存和数据刷新。当 `query` 响应式变化时（如翻页、搜索），Vue Query 会自动重新请求数据，无需手动调用 `fetchList`。
 
-创建 `views/app/article/form.vue`：
+### 2.3 创建表单页
+
+创建 `views/app/article/form.vue`，使用 `useGetArticle`、`useCreateArticle`、`useUpdateArticle` Vue Query hooks：
 
 ```vue
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Form, Input, Select, Button, message } from 'ant-design-vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useArticleDetail } from '#/api/composables/article';
+import {
+  useGetArticle,
+  useCreateArticle,
+  useUpdateArticle,
+} from '#/api';
 
 const router = useRouter();
 const route = useRoute();
-const { loading, article, fetchDetail, saveArticle } = useArticleDetail();
+
+const articleId = computed(() => Number(route.query.id) || 0);
+const isEdit = computed(() => articleId.value > 0);
+
+// 编辑模式时自动获取详情（Vue Query 自动管理）
+const { data: article } = useGetArticle(
+  { id: articleId.value },
+  { enabled: isEdit.value },
+);
+
+const { mutateAsync: createArticle, isPending: isCreating } = useCreateArticle();
+const { mutateAsync: updateArticle, isPending: isUpdating } = useUpdateArticle();
+
+const isSubmitting = computed(() => isCreating || isUpdating);
 
 const formRef = ref();
 const formData = ref({
-  id: undefined as number | undefined,
   title: '',
   content: '',
-  author_id: 1, // TODO: 从当前用户获取
+  author_id: 1,
   status: 0,
 });
 
@@ -385,28 +345,29 @@ const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
 };
 
-// 加载详情
-async function loadDetail() {
-  const id = Number(route.query.id);
-  if (id) {
-    await fetchDetail(id);
-    if (article.value) {
-      formData.value = {
-        id: article.value.id,
-        title: article.value.title,
-        content: article.value.content || '',
-        author_id: article.value.author_id,
-        status: article.value.status,
-      };
-    }
+// 详情加载后自动填充表单
+watch(article, (val) => {
+  if (val) {
+    formData.value = {
+      title: val.title,
+      content: val.content || '',
+      author_id: val.author_id,
+      status: val.status,
+    };
   }
-}
+}, { immediate: true });
 
 // 提交
 async function handleSubmit() {
   try {
     await formRef.value.validate();
-    await saveArticle(formData.value);
+    if (isEdit.value) {
+      await updateArticle({ id: articleId.value, values: formData.value });
+      message.success('更新成功');
+    } else {
+      await createArticle(formData.value);
+      message.success('创建成功');
+    }
     router.back();
   } catch (error) {
     console.error(error);
@@ -417,14 +378,10 @@ async function handleSubmit() {
 function handleCancel() {
   router.back();
 }
-
-onMounted(() => {
-  loadDetail();
-});
 </script>
 
 <template>
-  <Page :title="formData.id ? '编辑文章' : '新建文章'">
+  <Page :title="isEdit ? '编辑文章' : '新建文章'">
     <Form
       ref="formRef"
       :model="formData"
@@ -453,21 +410,24 @@ onMounted(() => {
       </Form.Item>
 
       <Form.Item :wrapper-col="{ offset: 4 }">
-        <Space>
-          <Button type="primary" :loading="loading" @click="handleSubmit">
-            提交
-          </Button>
-          <Button @click="handleCancel">取消</Button>
-        </Space>
+        <Button type="primary" :loading="isSubmitting" @click="handleSubmit">
+          提交
+        </Button>
+        <Button @click="handleCancel">取消</Button>
       </Form.Item>
     </Form>
   </Page>
 </template>
 ```
 
-## 五、步骤 4：注册路由
+> **要点**：
+> - `useGetArticle` 配合 `enabled: isEdit` 仅在编辑模式时获取详情
+> - `useCreateArticle` 和 `useUpdateArticle` 提供独立的 `isPending` 状态
+> - 更新操作通过 `useUpdateArticle({ id, values })` 自动生成 `updateMask`，只需传入变化的字段
 
-### 5.1 创建路由模块
+## 四、步骤 3：注册路由
+
+### 3.1 创建路由模块
 
 在 `frontend/admin/vue-vben/apps/admin/src/router/routes/modules/app/` 目录下创建 `article.ts`：
 
@@ -510,13 +470,13 @@ const routes: RouteRecordRaw[] = [
 export default routes;
 ```
 
-### 5.2 自动导入
+### 3.2 自动导入
 
 Vben Admin 的路由系统会自动扫描 `router/routes/modules/` 目录下的所有 `.ts` 文件并注册路由，无需手动导入。
 
-## 六、步骤 5：配置菜单权限
+## 五、步骤 4：配置菜单权限
 
-### 6.1 在后端添加菜单
+### 4.1 在后端添加菜单
 
 1. 登录后台管理系统
 2. 进入 **权限管理 → 菜单管理**
@@ -537,7 +497,7 @@ Vben Admin 的路由系统会自动扫描 `router/routes/modules/` 目录下的�
    - 组件路径：`/app/article/index`
    - 权限标识：`article:list`
 
-### 6.2 分配权限给角色
+### 4.2 分配权限给角色
 
 1. 进入 **权限管理 → 角色管理**
 2. 选择需要授权的角色
@@ -545,9 +505,9 @@ Vben Admin 的路由系统会自动扫描 `router/routes/modules/` 目录下的�
 4. 勾选"文章管理"相关权限
 5. 保存
 
-## 七、步骤 6：测试验证
+## 六、步骤 5：测试验证
 
-### 7.1 启动前端
+### 5.1 启动前端
 
 ```shell
 cd frontend/admin/vue-vben
@@ -556,11 +516,11 @@ pnpm dev:antd
 
 访问 <http://localhost:5666>。
 
-### 7.2 检查菜单
+### 5.2 检查菜单
 
 登录后，左侧菜单应显示"文章管理"，点击进入可以看到文章列表页面。
 
-### 7.3 功能测试
+### 5.3 功能测试
 
 - 测试搜索功能
 - 测试新建文章
@@ -706,7 +666,7 @@ const pageConfig: ProPageConfig = {
 
 > 所有 Pro 组件均基于原生 Element Plus 原子组件封装，Props、事件、插槽完全开放，随时可回归原生编码。
 
-### 9.3 添加国际化
+### 10.4 添加国际化
 
 在 `locales/` 目录下添加多语言翻译文件。
 
@@ -714,11 +674,10 @@ const pageConfig: ProPageConfig = {
 
 通过本教程，我们完成了前端页面的完整开发流程：
 
-1. **API 层**：封装 HTTP 请求
-2. **Composable 层**：提供响应式状态管理
-3. **页面组件**：实现 UI 和交互
-4. **路由注册**：配置页面路由
-5. **菜单权限**：后端配置菜单和权限
+1. **API Composables 层**：基于 Vue Query 封装 `use*` / `fetch*` hooks
+2. **页面组件**：使用 Vue Query hooks 实现 UI 和交互
+3. **路由注册**：配置页面路由
+4. **菜单权限**：后端配置菜单和权限
 
 这套流程适用于任何新增的业务页面，掌握了这个模式，就可以快速扩展 GoWind Admin 的前端功能。
 

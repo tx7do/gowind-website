@@ -112,52 +112,75 @@ GoWind UBA（User Behavior Analytics）是一个用户行为分析工具，基�
 
 ### 技术栈
 
-| 层次       | 技术                           | 说明           |
-|----------|------------------------------|--------------|
-| **后端**   | Go 1.18+、Kratos 框架、分布式处理     | 高吞吐、低延迟的数据处理 |
-| **前端**   | Vue3、TypeScript、Echarts、可视化库 | 丰富的数据可视化     |
-| **数据处理** | Spark / Flink                | 批量和流处理       |
-| **数据存储** | ClickHouse / Elasticsearch   | 高效的时间序列和日志存储 |
-| **缓存**   | Redis                        | 热数据缓存        |
-| **消息队列** | Kafka                        | 数据管道         |
+| 层次 | 技术 | 说明 |
+|------|------|------|
+| 语言 | [Go 1.25+](https://go.dev/) | 高性能编译型语言 |
+| 框架 | [go-kratos](https://go-kratos.dev/) v2 | B 站开源微服务框架 |
+| 依赖注入 | [Wire](https://github.com/google/wire) | 编译时依赖注入 |
+| ORM | [Ent](https://entgo.io/) | Go 实体框架（PostgreSQL） |
+| OLAP 引擎 | [ClickHouse](https://clickhouse.com/) / [Apache Doris](https://doris.apache.org/) | 双引擎可切换 |
+| 消息队列 | [Kafka](https://kafka.apache.org/) | 事件数据管道 |
+| 缓存 | [Redis](https://redis.io/) | 内存数据库 + 任务队列 |
+| 对象存储 | [MinIO](https://min.io/) | S3 兼容对象存储 |
+| 服务注册 | [Etcd](https://etcd.io/) / Consul | 服务发现 |
+| 链路追踪 | [Jaeger](https://www.jaegertracing.io/) | 分布式可观测 |
+| API 定义 | [Protobuf](https://protobuf.dev/) + [buf.build](https://buf.build/) | 接口契约优先 |
+| 任务调度 | [Asynq](https://github.com/hibiken/asynq) | 基于 Redis 的异步任务 |
+| 权限引擎 | [Casbin](https://casbin.org/) / OPA | 策略驱动鉴权 |
+| BI 可视化 | [Apache Superset](https://superset.apache.org/) | 开源 BI 平台 |
+| 前端 | [Vue 3](https://vuejs.org/) + TypeScript + [Ant Design Vue](https://antdv.com/) + [Vben Admin](https://doc.vben.pro/) | 管理后台前端 |
+| 数据可视化 | [ECharts](https://echarts.apache.org/) | 图表库 |
 
 ### 系统架构
 
+GoWind UBA 采用 **三服务微服务架构**，基于 go-kratos v2 构建：
+
+```mermaid
+graph TB
+    subgraph 前端
+        AdminUI[管理后台<br/>Vue3 + Vben Admin]
+        SDK[Web SDK<br/>数据采集]
+    end
+
+    subgraph 后端服务
+        Collector[Collector Service<br/>数据采集<br/>端口: 9800]
+        Admin[Admin Service<br/>管理后台 BFF<br/>端口: 9700, SSE: 9701]
+        Core[Core Service<br/>核心业务<br/>gRPC 内部]
+    end
+
+    subgraph 数据管道
+        Kafka[(Kafka)]
+    end
+
+    subgraph OLAP
+        CH[(ClickHouse / Doris)]
+    end
+
+    subgraph 基础设施
+        PG[(PostgreSQL)]
+        Redis[(Redis)]
+        MinIO[(MinIO)]
+        Etcd[(Etcd)]
+        Jaeger[(Jaeger)]
+        Superset[(Superset)]
+    end
+
+    SDK -->|HTTP| Collector
+    AdminUI -->|HTTP/SSE| Admin
+    Collector --> Kafka
+    Kafka --> Core
+    Admin -->|gRPC| Core
+    Core --> CH & PG & Redis & MinIO
+    CH --> Superset
 ```
-┌──────────────────────────────────┐
-│   Web / App 客户端               │
-│   (集成采集 SDK)                 │
-└──────────────┬───────────────────┘
-               │
-        ┌──────▼──────────┐
-        │  数据采集服务    │
-        │  (事件收集)      │
-        └──────┬──────────┘
-               │
-        ┌──────▼──────────┐
-        │  消息队列(Kafka) │
-        └──────┬──────────┘
-               │
-    ┌──────────┼──────────┐
-    │          │          │
-┌───▼──┐  ┌───▼──┐  ┌───▼──┐
-│实时处理 │  │批量处理 │  │数据分析 │
-│(Flink)│  │(Spark) │  │(计算)   │
-└───┬──┘  └───┬──┘  └───┬──┘
-    │         │         │
-┌───▼──────────▼─────────▼──┐
-│   数据存储                  │
-│   - ClickHouse (OLAP)      │
-│   - Elasticsearch (日志)   │
-│   - MySQL (元数据)         │
-│   - Redis (缓存)          │
-└────────────┬──────────────┘
-             │
-        ┌────▼────────┐
-        │ 分析引擎     │
-        │ 报表展示     │
-        └─────────────┘
-```
+
+### 三服务职责划分
+
+| 服务 | 目录 | 端口 | 职责 |
+|------|------|------|------|
+| **Collector Service** | `app/collector/service/` | REST: 9800 | 接收 SDK 上报数据，写入 Kafka |
+| **Admin Service** | `app/admin/service/` | REST: 9700, SSE: 9701 | 管理后台 BFF，HTTP API + SSE |
+| **Core Service** | `app/core/service/` | gRPC（内部） | 核心业务 + 数据层，消费 Kafka |
 
 ## 四、核心功能模块
 
@@ -445,9 +468,49 @@ A: 默认保存 90 天，可自定义配置。
 
 A: 是的，支持设置关键指标告警和通知。
 
-## 十、获取帮助
+## 十、相关文档
 
-- 📖 [快速开始指南](/guide/getting-started.md)
+### 基础文档
+
+- [UBA 安装指南](./installation.md)
+- [UBA 后端架构总览](./backend-architecture.md)
+- [UBA Protobuf API 定义](./backend-api.md)
+- [UBA 配置与部署指南](./backend-config-deploy.md)
+- [UBA 后端模块总览](./backend-modules.md)
+- [UBA 后端扩展机制](./backend-extension.md)
+- [UBA 前端架构](./frontend-architecture.md)
+- [UBA 前端模块总览](./frontend-modules.md)
+- [GoWind Admin 文档](/admin/intro.md) — 共享技术基座的详细说明
+
+### 循序渐进教程
+
+| 阶段 | 教程 | 说明 |
+|------|------|------|
+| 入门 | [Web SDK 集成实战](./tutorial-sdk-integration.md) | 数据采集 SDK 集成与事件埋点 |
+| 入门 | [数据采集管道实战](./tutorial-data-pipeline.md) | SDK → Collector → Kafka → Core → OLAP |
+| 入门 | [API 客户端代码生成](./tutorial-codegen.md) | Buf 工具链生成 TS/OpenAPI |
+| 核心 | [事件分析实战](./tutorial-event-analysis.md) | BehaviorEvent 模型与查询统计 |
+| 核心 | [漏斗与转化分析](./tutorial-funnel-analysis.md) | 多步骤转化漏斗分析 |
+| 核心 | [会话分析实战](./tutorial-session-analysis.md) | 会话切分与行为序列 |
+| 核心 | [用户路径分析实战](./tutorial-path-analysis.md) | 行为路径与桑基图 |
+| 核心 | [用户行为画像实战](./tutorial-user-profile.md) | 用户维度数据与画像构建 |
+| 核心 | [留存分析实战](./tutorial-retention-analysis.md) | N 日留存矩阵与趋势 |
+| 进阶 | [用户分群与标签系统](./tutorial-user-segmentation.md) | 标签定义、规则计算与分群 |
+| 进阶 | [风控检测引擎实战](./tutorial-risk-detection.md) | 规则引擎、实时检测与自动响应 |
+| 进阶 | [双 OLAP 引擎实战](./tutorial-olap-engine.md) | ClickHouse/Doris 切换 |
+| 进阶 | [跨平台 ID 映射实战](./tutorial-id-mapping.md) | 多端用户身份关联 |
+| 进阶 | [Webhook 告警实战](./tutorial-webhook-alert.md) | 事件推送与外部系统集成 |
+| 进阶 | [Superset BI 集成](./tutorial-superset-integration.md) | 开源 BI 仪表板 |
+| 高阶 | [任务调度实战](./tutorial-task-scheduling.md) | Asynq 异步任务（留存/标签/清理） |
+| 高阶 | [实时 SSE 推送实战](./tutorial-sse-push.md) | 风险告警/站内信实时推送 |
+| 高阶 | [权限系统实战](./tutorial-permission-system.md) | RBAC + Casbin 三级权限 |
+| 高阶 | [登录安全实战](./tutorial-login-security.md) | JWT 双 Token + 登录策略 |
+| 综合 | [全栈集成实战](./tutorial-fullstack-integration.md) | 电商购买转化分析完整案例 |
+| 综合 | [三服务部署实战](./tutorial-deploy.md) | Docker + Nginx 部署 |
+
+## 十一、获取帮助
+
+- 📖 [快速开始指南](./installation.md)
 - 📧 邮件：<yanglinbo@gmail.com>
 - 💬 讨论：[GitHub Discussions](https://github.com/tx7do/go-wind-uba/discussions)
 - 🐛 反馈：[GitHub Issues](https://github.com/tx7do/go-wind-uba/issues)

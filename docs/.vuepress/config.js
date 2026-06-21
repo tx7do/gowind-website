@@ -96,9 +96,14 @@ export default defineUserConfig({
             // GoWind CMS 侧边栏
             '/cms/': [
                 {
-                    text: 'GoWind CMS',
+                    text: '介绍',
                     children: [
                         '/cms/intro.md',
+                    ],
+                },
+                {
+                    text: '安装部署',
+                    children: [
                         '/cms/installation.md',
                     ],
                 },

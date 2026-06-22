@@ -27,7 +27,9 @@ export default defineUserConfig({
             {text: 'GoWind CMS', link: '/cms/intro.md'},
             {text: 'GoWind IM', link: '/im/intro.md'},
             {text: 'GoWind UBA', link: '/uba/intro.md'},
+            {text: 'GoWind IoT', link: '/iot/intro.md'},
             {text: 'GoWind Toolkit', link: '/toolkit/intro.md'},
+            {text: 'GoWind Quant', link: '/quant/intro.md'},
         ],
 
         // 侧边栏配置（分项目独立侧边栏）
@@ -328,6 +330,27 @@ export default defineUserConfig({
                     children: [
                         '/toolkit/backend-code-generation.md',
                         '/toolkit/frontend-code-generation.md',
+                    ],
+                },
+            ],
+            // GoWind IoT 侧边栏
+            '/iot/': [
+                {
+                    text: 'GoWind IoT',
+                    children: [
+                        '/iot/intro.md',
+                        '/iot/installation.md',
+                    ],
+                },
+            ],
+            // GoWind Quant 侧边栏（研究项目 · 非卖品）
+            '/quant/': [
+                {
+                    text: 'GoWind Quant（非卖品）',
+                    children: [
+                        '/quant/intro.md',
+                        '/quant/strategies.md',
+                        '/quant/architecture.md',
                     ],
                 },
             ],

@@ -1,195 +1,157 @@
 # UBA 后端模块总览
 
-本文档梳理 GoWind UBA 后端各服务包含的功能模块及其职责。
+本文档梳理 GoWind UBA 后端的代码结构、三服务 service 层清单、公共包（pkg）以及目录速查，帮助二次开发者快速定位代码。
 
-## 一、Core Service 模块
+---
 
-Core Service 是核心业务服务，包含所有数据处理逻辑，通过 gRPC 供 Admin 和 Collector 调用。
-
-### 1.1 UBA 数据模块
-
-| 模块 | 目录 | 数据存储 | 说明 |
-|------|------|---------|------|
-| BehaviorEvent | `internal/data/.../events_fact_repo.go` | OLAP | 行为事件事实表，核心数据 |
-| Session | `internal/data/.../sessions_fact_repo.go` | OLAP | 会话聚合数据 |
-| EventPath | `internal/data/.../path_features_repo.go` | OLAP | 用户行为路径 |
-| UserBehaviorProfile | `internal/data/.../users_dim_repo.go` | OLAP | 用户维度画像 |
-| ObjectDim | `internal/data/.../objects_dim_repo.go` | OLAP | 对象维度 |
-| IDMapping | `internal/data/.../id_mapping_repo.go` | OLAP | 跨平台 ID 映射 |
-| UserTag | `internal/data/.../user_tags_repo.go` | OLAP | 用户标签数据 |
-| RiskEvent | `internal/data/.../risk_events_repo.go` | OLAP | 风险事件 |
-
-### 1.2 UBA 业务模块
-
-| 模块 | 说明 |
-|------|------|
-| ApplicationService | 应用管理（AppID/AppKey/AppSecret 生成与管理） |
-| RiskRuleService | 风控规则引擎（条件表达式、动作、版本管理） |
-| WebhookService | Webhook 配置与投递（事件过滤、重试） |
-| TagDefinitionService | 标签定义（类型、规则、允许值） |
-| ReportService | 统一事件上报服务（批量、混合类型） |
-
-### 1.3 平台管理模块
-
-| 模块 | 说明 |
-|------|------|
-| AuthenticationService | 认证服务（登录、登出、Token 刷新） |
-| UserService | 用户管理 |
-| RoleService | 角色管理 |
-| TenantService | 租户管理（多租户数据隔离） |
-| OrgUnitService | 部门管理 |
-| PositionService | 职位管理 |
-| PermissionService | 权限管理 |
-| MenuService | 菜单管理 |
-| DictService | 字典管理 |
-| TaskService | 任务调度（Asynq） |
-| FileService | 文件存储管理 |
-| LanguageService | 多语言管理 |
-| InternalMessageService | 站内信 |
-
-### 1.4 审计模块
-
-| 模块 | 说明 |
-|------|------|
-| ApiAuditLogService | API 请求日志 |
-| LoginAuditLogService | 登录日志 |
-| OperationAuditLogService | 操作日志 |
-| DataAccessAuditLogService | 数据访问日志 |
-| PermissionAuditLogService | 权限变更日志 |
-| PolicyEvaluationLogService | 策略评估日志 |
-
-## 二、Admin Service 模块
-
-Admin Service 作为 BFF 层，为前端提供 HTTP REST API + SSE 实时推送。
-
-### 2.1 HTTP REST 服务
-
-Admin Service 包含 41+ 个 Service 实现，与 Core Service 的 gRPC 接口一一对应，增加 HTTP 路由和请求转换。
-
-### 2.2 SSE 实时推送
-
-| 功能 | 说明 |
-|------|------|
-| 站内信推送 | 新消息实时推送 |
-| 风险告警推送 | 高风险事件实时告警 |
-| 任务状态推送 | 异步任务完成通知 |
-
-SSE 端点：`http://localhost:9701/events`
-
-## 三、Collector Service 模块
-
-Collector Service 是轻量级数据采集服务，职责单一。
-
-| 模块 | 说明 |
-|------|------|
-| ReportService | 接收 SDK 上报，验证 AppID/AppSecret，格式化后写入 Kafka |
-| HealthCheck | 服务健康检查 |
-
-### 数据处理流程
-
-```mermaid
-graph LR
-    Request["HTTP POST<br/>/uba/v1/report"] --> Auth["验证 AppID/AppSecret"]
-    Auth --> Parse["解析事件列表"]
-    Parse --> Validate["数据校验"]
-    Validate --> Kafka["写入 Kafka Topic"]
-    Kafka --> Response["返回结果"]
-```
-
-## 四、数据仓库分层
-
-### 4.1 ClickHouse 实现
+## 一、后端目录结构
 
 ```
-internal/data/clickhouse/
-├── events_fact_repo.go       # 事件事实表
-├── sessions_fact_repo.go     # 会话事实表
-├── users_dim_repo.go         # 用户维度表
-├── objects_dim_repo.go       # 对象维度表
-├── id_mapping_repo.go        # ID 映射表
-├── risk_events_repo.go       # 风险事件表
-├── path_features_repo.go     # 路径特征表
-└── user_tags_repo.go         # 用户标签表
+backend/
+├── api/                            # Protobuf API 定义与生成代码
+│   ├── protos/                     # .proto 源文件（按领域分层）
+│   │   ├── admin/service/v1/       # 管理后台 HTTP 网关 proto（生成 TS 客户端的唯一输入）
+│   │   ├── uba/service/v1/         # UBA 领域消息 + gRPC 服务契约
+│   │   └── <其他领域>/             # authentication / dict / permission / identity ...
+│   └── gen/go/                     # buf 生成的 Go 代码
+├── app/                            # 服务应用
+│   ├── admin/service/              # Admin 服务（管理后台 BFF，薄转发）
+│   ├── collector/service/          # Collector 服务（埋点采集 BFF）
+│   └── core/service/               # Core 服务（核心业务逻辑）
+│       └── internal/
+│           ├── data/               # 数据层（ent repo / OLAP repo / client）
+│           │   ├── ent/schema/     # ent 实体定义（改这里 → make ent）
+│           │   ├── doris/          # Doris repo（含 schema/ 事实表定义）
+│           │   └── clickhouse/     # ClickHouse repo（含 schema/ 事实表定义）
+│           ├── service/            # 业务 service 实现
+│           └── server/             # grpc / rest server 注册
+├── pkg/                            # 公共包
+├── sql/                            # 数据库脚本（clickhouse / doris / postgresql）
+├── scripts/                        # 部署脚本（deploy / docker / env）
+└── Makefile                        # 代码生成 / 构建命令
 ```
 
-### 4.2 Doris 实现
+每个服务目录下都遵循 kratos 标准布局：`cmd/server/`（入口）+ `configs/`（YAML 配置）+ `internal/{conf,data,server,service}/`。
 
-```
-internal/data/doris/
-├── events_fact_repo.go       # 事件事实表
-├── sessions_fact_repo.go     # 会话事实表
-├── users_dim_repo.go         # 用户维度表
-├── objects_dim_repo.go       # 对象维度表
-├── id_mapping_repo.go        # ID 映射表
-├── risk_events_repo.go       # 风险事件表
-├── path_features_repo.go     # 路径特征表
-└── user_tags_repo.go         # 用户标签表
-```
+---
 
-### 4.3 Ent ORM（PostgreSQL 元数据）
+## 二、Core Service（核心业务）
 
-```
-internal/data/ent/
-├── schema/                   # Ent Schema 定义
-│   ├── user.go
-│   ├── role.go
-│   ├── tenant.go
-│   ├── application.go
-│   ├── risk_rule.go
-│   ├── webhook.go
-│   └── ...
-└── generate.go               # go:generate 指令
-```
+目录：`backend/app/core/service/internal/service/`，承载几乎所有业务逻辑。按职责分组如下：
 
-## 五、SQL Schema
+### 数据采集与事件
 
-### 5.1 ClickHouse Schema
+| Service | 对应 proto | 职责 |
+|---------|-----------|------|
+| `BehaviorEventService` | `behavior_event.proto` | 行为事件入库（`Create`/`BatchCreate`）、`List`/`Get` |
+| `SessionService` | `session.proto` | 会话事实表 CRUD |
+| `EventPathService` | `event_path.proto` | 用户路径事实表 CRUD |
+| `EventSchemaService` | `event_schema.proto` | 事件 Schema 管理（事件名/属性校验登记） |
+| `ObjectService` | `object.proto` | 行为对象（object_type/object_id）管理 |
+| `ApplicationService` | `application.proto` | UBA 应用管理（生成 appId/appKey/appSecret） |
 
-```
-backend/sql/clickhouse/
-├── 01_create_database.sql        # 创建数据库
-├── 02_create_events_fact.sql     # 事件事实表
-├── 03_create_sessions_fact.sql   # 会话事实表
-├── 04_create_users_dim.sql       # 用户维度表
-├── 05_create_objects_dim.sql     # 对象维度表
-├── 06_create_id_mapping.sql      # ID 映射表
-├── 07_create_kafka_tables.sql    # Kafka 消费表
-├── 08_create_mv.sql              # 物化视图
-└── 09_create_risk_events.sql     # 风险事件表
-```
+### 分析建模
 
-### 5.2 Doris Schema
+| Service | 对应 proto | 职责 |
+|---------|-----------|------|
+| `AnalyticsService` | `analytics.proto` | **5 个聚合查询**：`EventTrend` / `Funnel` / `Retention` / `GroupBy` / `ActiveUsers`（按 `UseClickHouse` 分支选 Doris/ClickHouse repo） |
 
-```
-backend/sql/doris/
-├── 01_create_database.sql
-├── 02_create_events_fact.sql
-├── 03_create_sessions_fact.sql
-├── 04_create_users_dim.sql
-├── 05_create_objects_dim.sql
-├── 06_create_id_mapping.sql
-├── 07_create_risk_events.sql
-└── 08_create_user_tags.sql
-```
+### 风险与标签
 
-## 六、公共包
+| Service | 对应 proto | 职责 |
+|---------|-----------|------|
+| `RiskEventService` | `risk_event.proto` | 风险事件结果存取（`Create`/`BatchCreate`/`List`） |
+| `RiskRuleService` | `risk_rule.proto` | 风险规则定义 CRUD |
+| `TagDefinitionService` | `tag_definition.proto` | 标签定义 CRUD |
+| `UserTagService` | `user_tag.proto` | 用户标签关联 |
+| `IdMappingService` | `id_mapping.proto` | 跨平台 ID 映射（身份图） |
+| `UserBehaviorProfileService` | `user_behavior_profile.proto` | 用户行为画像事实表 CRUD |
+| `WebhookService` | `webhook.proto` | Webhook 配置（风险告警推送） |
 
-```
-backend/pkg/
-├── auth/          # 认证（JWT + MFA）
-├── crypto/        # 加密工具（AES-GCM + bcrypt）
-├── eventbus/      # 事件总线
-├── jwt/           # JWT 工具
-├── middleware/     # HTTP 中间件
-├── oss/           # 对象存储（MinIO/S3）
-├── pagination/    # 分页工具
-├── risk/          # 风控引擎
-└── tracing/       # 链路追踪
-```
+### 组织与权限
 
-## 相关文档
+| Service | 职责 |
+|---------|------|
+| `TenantService` | 多租户管理 |
+| `UserService` / `UserCredentialService` | 用户全生命周期、登录凭据 |
+| `RoleService` / `PermissionService` / `PermissionGroupService` | 角色、权限、权限组 |
+| `OrgUnitService` / `PositionService` | 组织架构、岗位 |
+| `MenuService` | 菜单节点 |
+| `DictTypeService` / `DictEntryService` | 数据字典 |
+| `LanguageService` | 多语言 |
+| `LoginPolicyService` | 登录策略 |
+| `ApiService` | API 元数据登记 |
 
-- [UBA 后端架构总览](./backend-architecture.md)
-- [UBA Protobuf API 定义](./backend-api.md)
-- [UBA 配置与部署指南](./backend-config-deploy.md)
-- [UBA 后端扩展机制](./backend-extension.md)
+### 系统运维
+
+| Service | 职责 |
+|---------|------|
+| `AuthenticationService` | 登录认证、令牌签发 |
+| `FileService` / `FileTransferService` | 文件存储（MinIO）、文件传输 |
+| `InternalMessageService`（+ Category / Recipient） | 站内消息 |
+| `TaskService` | 异步任务（Asynq） |
+| 审计日志（5 类） | `LoginAuditLogService` / `OperationAuditLogService` / `ApiAuditLogService` / `PermissionAuditLogService` / `DataAccessAuditLogService` / `PolicyEvaluationLogService` |
+
+> 完整 proto 契约见 [后端 API 契约](./backend-api.md)。
+
+---
+
+## 三、Admin Service（管理后台 BFF）
+
+目录：`backend/app/admin/service/internal/service/`。**全部是薄转发实现**：实现 `adminV1.XxxHTTPServer`，方法体内调用对应的 Core gRPC client（`ubaV1.XxxClient`），不含业务逻辑。
+
+Admin service 与 Core service 一一对应：`analytics_service.go`、`application_service.go`、`behavior_event_service.go`、`risk_event_service.go`、`user_service.go`、`role_service.go` 等约 40+ 转发实现。
+
+> 新增对外 HTTP 能力的完整步骤见 [新增对外服务教程](./tutorial-new-service.md)。
+
+---
+
+## 四、Collector Service（采集 BFF）
+
+目录：`backend/app/collector/service/`。职责单一：接收 `POST /uba/v1/report`，做应用鉴权、字段校验补全，然后 Publish 到 Kafka。本身无业务 service 层，逻辑集中在 transport 层与 `pkg/topic`（Kafka topic 管理）。
+
+---
+
+## 五、公共包（pkg）
+
+目录：`backend/pkg/`，被三服务共享：
+
+| 包 | 职责 |
+|----|------|
+| `authorizer` | 鉴权引擎封装（Casbin / OPA） |
+| `constants` | 常量定义 |
+| `crypto` | 加密工具（AES-GCM 等） |
+| `jwt` | JWT 工具（签发/校验） |
+| `metadata` | 请求元数据管理（tenantId 注入等） |
+| `middleware` | 中间件（鉴权/日志/Ent/元数据） |
+| `oss` | 对象存储（MinIO / S3 兼容） |
+| `serviceid` | 服务标识 |
+| `task` | 异步任务（Asynq 封装） |
+| `topic` | Kafka Topic 管理（`uba_events_raw` / `uba_risk_events`） |
+| `utils` | 通用工具 |
+| `entgo` | Ent 扩展（go-crud Repository 泛型封装、mixin 等） |
+
+---
+
+## 六、数据层要点
+
+### PostgreSQL（Ent）
+
+- 实体定义在 `app/core/service/internal/data/ent/schema/`，表名通过 `entsql.Annotation{Table: ...}` 声明。
+- **没有手写的 `schema.sql`**——表结构由 `make ent` 生成；`sql/postgresql/` 下仅有字典种子数据（`default-data.sql`）与演示数据。
+- 业务表前缀：`sys_`（系统/RBAC/i18n/字典）、`uba_`（UBA 业务）、其余如 `files`、`internal_messages`。
+
+### OLAP（Doris / ClickHouse）
+
+- 事实表 schema 在 `app/core/service/internal/data/{clickhouse,doris}/schema/` 镜像定义，与 `sql/{clickhouse,doris}/` 脚本一致。
+- 主要事实表：`events_fact`、`sessions_fact`、`risk_events`、`path_features`；维度表：`users_dim`、`objects_dim`、`id_mapping`、`user_tags`。
+- 聚合查询走**原生 SQL**（不用 Ent）；维度字段走**白名单**，metric 走 switch，数值强转后拼接以防注入。
+
+---
+
+## 七、相关文档
+
+- [系统架构](./architecture.md)
+- [后端 API 契约](./backend-api.md)
+- [前端架构](./frontend-architecture.md)
+- [代码生成管线](./tutorial-codegen.md)

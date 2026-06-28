@@ -1,244 +1,178 @@
 # UBA 前端架构
 
-GoWind UBA 前端采用 Vue 3 + TypeScript + Ant Design Vue + Vben Admin 技术栈，基于 Monorepo 架构组织代码。
+本文档梳理 GoWind UBA 管理后台前端（`frontend/admin/`）的工程结构、API 层范式与路由机制，帮助二次开发者快速上手前端开发。
 
-## 一、技术栈
+---
 
-| 技术 | 说明 |
+## 一、技术栈与工程形态
+
+管理后台是一个基于 **Vben Admin 5.4** 的 **pnpm + turbo monorepo**，应用入口在 `apps/admin`。
+
+| 维度 | 选型 |
 |------|------|
-| [Vue 3](https://vuejs.org/) + TypeScript | 渐进式前端框架 |
-| [Ant Design Vue](https://antdv.com/) | 企业级 UI 组件库 |
-| [Vben Admin](https://doc.vben.pro/) | 后台管理框架（Monorepo） |
-| Vue Query (TanStack Query) | 数据获取与缓存 |
-| [ECharts](https://echarts.apache.org/) | 数据可视化图表库 |
-| Vite + Turbo | 快速热更新 + 增量构建 |
+| 框架 | Vue 3.5 + TypeScript |
+| UI 组件库 | Ant Design Vue |
+| 脚手架/框架 | Vben Admin 5.4（monorepo，packages/* + apps/*） |
+| 状态管理 | Pinia 2.2 |
+| 数据获取层 | TanStack Vue Query（`@tanstack/vue-query`） |
+| 路由 | Vue Router |
+| 构建 | Vite |
+| API 协议 | Connect-RPC（TypeScript 客户端由 proto 生成） |
+| 富文本/编辑器 | Tiptap、Monaco、md-editor-v3 等 |
+| 包管理 | pnpm（`engines: node >=20.10.0, pnpm >=9.12.0`） |
 
-## 二、项目结构
-
-```
-frontend/
-├── admin/                        # 管理后台前端
-│   ├── apps/                     # 应用入口
-│   │   ├── web-antd/             # Ant Design Vue 应用
-│   │   │   ├── src/
-│   │   │   │   ├── api/          # API 客户端
-│   │   │   │   ├── views/        # 页面组件
-│   │   │   │   ├── router/       # 路由配置
-│   │   │   │   └── store/        # 状态管理
-│   │   │   └── ...
-│   │   └── ...
-│   ├── packages/                 # 共享包
-│   │   ├── types/                # 类型定义
-│   │   ├── utils/                # 工具函数
-│   │   ├── stores/               # 共享 Store
-│   │   └── ...
-│   └── ...
-├── sdk/                          # 数据采集 SDK
-│   └── web/
-│       ├── report_sdk.js         # Web SDK（原生 JS）
-│       ├── test.html             # 测试页面
-│       └── README.md
-└── ...
-```
-
-## 三、管理后台架构
-
-### 3.1 页面路由
+### 工作区结构
 
 ```
-views/
-├── dashboard/                    # 仪表板
-├── analytics/                    # 数据分析
-│   ├── event/                    # 事件分析
-│   ├── funnel/                   # 漏斗分析
-│   ├── session/                  # 会话分析
-│   ├── path/                     # 路径分析
-│   ├── retention/                # 留存分析
-│   └── user/                     # 用户分析
-├── risk/                         # 风控管理
-│   ├── rules/                    # 风控规则
-│   ├── events/                   # 风险事件
-│   └── webhooks/                 # Webhook 配置
-├── application/                  # 应用管理
-├── tag/                          # 标签管理
-│   ├── definition/               # 标签定义
-│   └── user-tag/                 # 用户标签
-├── system/                       # 系统管理
-│   ├── user/                     # 用户管理
-│   ├── role/                     # 角色管理
-│   ├── permission/               # 权限管理
-│   ├── tenant/                   # 租户管理
-│   └── ...
-└── profile/                      # 个人中心
+frontend/admin/
+├── apps/
+│   └── admin/                     # 管理后台应用（@vben/web-antd）
+│       └── src/
+│           ├── api/composables/   # API 组合式函数（加 composable）
+│           ├── generated/api/...  # 生成的 TS 客户端（实际导入）
+│           ├── api/generated/...  # make ts 输出位置（需手动同步）
+│           ├── router/routes/modules/app/  # 路由模块（加 .ts 自动收录）
+│           ├── locales/langs/     # i18n
+│           └── views/app/         # 页面视图
+├── packages/                      # Vben 内部包（effects/plugins 等）
+│   └── effects/plugins/src/echarts/  # ECharts 注册
+└── internal/                      # monorepo 内部工具
 ```
 
-### 3.2 API 调用层
+### 路径别名
 
-```typescript
-// api/client.ts
-import { ApplicationServiceClient } from '@/api/generated';
+- `#/*` → `./src/*`
+- `$/*` → `./generated/*`（生成的 Connect-RPC 类型）
 
-export const apiClient = {
-  applicationService: new ApplicationServiceClient(),
-  riskRuleService: new RiskRuleServiceClient(),
-  eventService: new BehaviorEventServiceClient(),
-  // ... 其他 Service
-};
-```
+---
 
-### 3.3 数据可视化
+## 二、视图模块（views/app/）
 
-使用 ECharts 构建分析图表：
+`apps/admin/src/views/app/` 下共 **12 个一级模块**：
 
-```vue
-<!-- views/analytics/event/TrendChart.vue -->
-<script setup lang="ts">
-import { use } from 'echarts/core';
-import { LineChart, BarChart } from 'echarts/charts';
-import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components';
-import { CanvasRenderer } from 'echarts/renderers';
+| 模块 | 子模块 | 说明 |
+|------|--------|------|
+| `data-analysis/` | event-trend / funnel / retention / dimension-compare / behavior-timeline / realtime-screen / session / event-path / profile | **分析仪表板套件**（核心分析界面） |
+| `risk/` | event / rule / webhook | 风控（风险事件、风险规则、Webhook） |
+| `tag/` | tags / user-tags / ids | 标签系统（标签定义、用户标签、ID 映射） |
+| `application/` | application | UBA 应用管理（appId/appSecret） |
+| `object/` | object | 行为对象管理 |
+| `system/` | api / dict / event-schema / file / language / login-policy / menu / task | 系统配置（字典、菜单、文件、定时任务、事件 Schema） |
+| `permission/` | permission / role | RBAC 权限与角色 |
+| `opm/` | org_unit / position / user | 组织与人员管理 |
+| `tenant/` | tenant | 多租户管理 |
+| `log/` | api / data-access / login / operation / permission 审计日志 | 5 类审计日志 |
+| `internal_message/` | category / message | 站内消息 |
 
-use([LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer]);
+> `data-analysis` 是分析师的主要工作界面，对应后端 `AnalyticsService` 的 5 个聚合 + 会话/路径/画像事实表查询。
 
-const props = defineProps<{ data: EventTrendData }>();
+---
 
-const chartOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: props.data.series.map(s => s.name) },
-  xAxis: { type: 'category', data: props.data.dates },
-  yAxis: { type: 'value' },
-  series: props.data.series.map(s => ({
-    name: s.name,
-    type: s.type,
-    data: s.values,
-  })),
-}));
-</script>
+## 三、API 层（composables）
 
-<template>
-  <VChart :option="chartOption" autoresize />
-</template>
-```
+API 调用统一封装在 `apps/admin/src/api/composables/`，目前约 **42 个 composable 文件**，与后端服务一一对应（`analytics.ts`、`application.ts`、`user.ts`、`risk-event.ts` 等）。导出 `index.ts` 作为 barrel。
 
-### 3.4 SSE 实时推送
+### 三种导出范式
 
-```typescript
-// composables/useSSE.ts
-export function useSSE() {
-  const eventSource = new EventSource('http://localhost:9701/events');
+**范式 A：只读分析查询**（`analytics.ts`）
 
-  onMounted(() => {
-    eventSource.addEventListener('risk_alert', (event) => {
-      const data = JSON.parse(event.data);
-      notification.warning({
-        message: '风险告警',
-        description: `检测到高风险事件: ${data.eventName}`,
-      });
-    });
+每个分析能力导出一对 `useXxx`（响应式，vue-query `useQuery`）+ `fetchXxx`（命令式，供 store/外部调用），共享 queryKey 元组 `['analytics', <name>, req]`，`staleTime: 60_000`：
 
-    eventSource.addEventListener('message', (event) => {
-      // 处理站内信
-    });
+```ts
+export function useEventTrend(req: MaybeRef<EventTrendRequest>) {
+  return useQuery({
+    queryKey: ['analytics', 'event-trend', toValue(req)],
+    queryFn: () => apiClient.analyticsService.eventTrend(toValue(req)),
+    staleTime: 60_000,
   });
-
-  onUnmounted(() => {
-    eventSource.close();
-  });
+}
+export function fetchEventTrend(req: EventTrendRequest) {
+  return apiClient.analyticsService.eventTrend(req);
 }
 ```
 
-## 四、Web SDK 架构
+**范式 B：CRUD 资源**（`application.ts`、`user.ts`）
 
-### 4.1 SDK 文件
+标准 5 hook 集合，读用 `useQuery`、写用 `useMutation`，更新带 FieldMask：
 
-```
-sdk/web/
-├── report_sdk.js     # 完整 SDK（原生 JS，无依赖）
-├── test.html         # 测试页面
-└── README.md
-```
-
-### 4.2 SDK 功能
-
-| 功能 | API | 说明 |
-|------|-----|------|
-| 事件追踪 | `track(name, properties)` | 发送自定义事件 |
-| 用户属性 | `userSet(props)` | 设置用户属性（覆盖） |
-| 用户属性 | `userSetOnce(props)` | 设置用户属性（仅一次） |
-| 用户属性 | `userAdd(key, value)` | 递增用户属性 |
-| 超级属性 | `setSuperProperties(props)` | 全局附加属性 |
-| 身份管理 | `identify(distinctId)` | 设置匿名 ID |
-| 身份管理 | `login(accountId)` | 登录关联 |
-| 身份管理 | `logout()` | 登出解绑 |
-
-### 4.3 SDK 初始化
-
-```javascript
-import { EventReport } from './report_sdk.js';
-
-const uba = new EventReport({
-  serverUrl: 'http://localhost:9800',
-  appId: 'your_app_id',
-  debugMode: 0,  // 0=正常, 1=测试存储, 2=测试不存储
-});
+```ts
+useListApplications(query)   // 列表（分页）
+fetchListApplications(params) // 命令式（供 VxeGrid proxyConfig.ajax.query 用）
+useGetApplication(req)       // 单条
+useCreateApplication()       // 创建
+useUpdateApplication()       // 更新（makeUpdateMask）
+useDeleteApplication()       // 删除
 ```
 
-详见 [Web SDK 集成实战](./tutorial-sdk-integration.md)。
+**范式 C：枚举/字典辅助**
 
-## 五、状态管理
+资源文件常附带展示辅助（`xxxToColor` / `xxxToName`），从 `dict` composable 取字典值并回退到硬编码映射。
 
-使用 Pinia 管理全局状态：
+### 生成的客户端
 
-```typescript
-// stores/app.ts
-export const useAppStore = defineStore('app', () => {
-  const currentApplication = ref<Application | null>(null);
-  const applications = ref<Application[]>([]);
+- `apps/admin/src/api/generated/admin/service/v1/index.ts`：`make ts` 输出位置。
+- `apps/admin/src/generated/api/admin/service/v1/index.ts`：composables **实际导入**的位置。
 
-  async function loadApplications() {
-    const { items } = await apiClient.applicationService.List({});
-    applications.value = items;
-    if (items.length > 0 && !currentApplication.value) {
-      currentApplication.value = items[0];
-    }
-  }
+> ⚠️ 生成后需手动把前者同步到后者（详见 [代码生成管线](./tutorial-codegen.md) 的「TS 产物同步」）。
 
-  return { currentApplication, applications, loadApplications };
-});
+---
+
+## 四、路由与菜单
+
+路由模块在 `apps/admin/src/router/routes/modules/app/`，共 **12 个文件**（与视图模块一一对应）。关键机制：
+
+- 父级路由 `component: BasicLayout`，`meta.order` 控制菜单顺序，`meta.icon` 用 `lucide:*` 字符串。
+- 子路由懒加载视图，`meta.authority`（如 `['sys:platform_admin']`）控制权限。
+- **`modules/app/*.ts` 下任何新 `.ts` 文件会被 `import.meta.glob` 自动收录**，无需手动注册。
+- 菜单标题来自 i18n（`menu.<module>.<key>`）。
+
+`data-analysis.ts` 示例：父路由 `/data-analysis`（`BasicLayout`，icon `lucide:chart-bar`），重定向到 `/data-analysis/event-trend`，下挂 9 个子路由（事件趋势、漏斗、留存、维度对比、行为时间线、实时大屏、会话、事件路径、画像）。
+
+---
+
+## 五、ECharts 图表
+
+图表通过 Vben 的 `@vben/plugins/echarts`（`EchartsUI` + `useEcharts`）与 `@vben/common-ui` 的 `AnalysisChartCard` 渲染。
+
+- 默认注册了 `line / bar / pie / radar`。
+- **漏斗 / 热力图需在 `packages/effects/plugins/src/echarts/echarts.ts` 的 `echarts.use([])` 追加注册**：
+
+  ```ts
+  import { FunnelChart, HeatmapChart } from 'echarts/charts';
+  import { VisualMapComponent } from 'echarts/components';
+  echarts.use([FunnelChart, HeatmapChart, VisualMapComponent]);
+  ```
+
+---
+
+## 六、i18n
+
+文案在 `apps/admin/src/locales/langs/{zh-CN,en-US}/`：
+
+- `menu.json`：菜单标题（`menu.<module>.<key>`）。
+- `page.json`：页面文案（字段标签、按钮、表格列名）。
+
+---
+
+## 七、常用命令
+
+```bash
+cd frontend/admin
+pnpm install          # 安装依赖
+pnpm dev              # 启动开发服务器（默认 dev:antd）
+pnpm build            # 生产构建（NODE_OPTIONS=--max-old-space-size=8192）
+pnpm typecheck        # vue-tsc 类型检查
+pnpm lint             # eslint
+pnpm test:unit        # vitest（dom 环境）
 ```
 
-## 六、权限控制
+新增前端页面的完整步骤见 [新增前端页面教程](./tutorial-new-page.md)。
 
-### 6.1 路由级权限
+---
 
-```typescript
-// router/guard.ts
-router.beforeEach(async (to, from, next) => {
-  const userStore = useUserStore();
-  if (to.meta.requiresAuth && !userStore.isLoggedIn) {
-    next('/login');
-  } else if (to.meta.permissions) {
-    const hasPermission = checkPermissions(to.meta.permissions, userStore.permissions);
-    if (!hasPermission) {
-      next('/403');
-    } else {
-      next();
-    }
-  } else {
-    next();
-  }
-});
-```
+## 八、相关文档
 
-### 6.2 按钮级权限
-
-```vue
-<a-button v-access:code="'risk:event:handle'">处理风险事件</a-button>
-```
-
-## 相关文档
-
-- [UBA 前端模块总览](./frontend-modules.md)
-- [Web SDK 集成实战](./tutorial-sdk-integration.md)
-- [事件分析实战](./tutorial-event-analysis.md)
-- [UBA 后端架构总览](./backend-architecture.md)
+- [系统架构](./architecture.md)
+- [后端 API 契约](./backend-api.md)
+- [新增前端页面](./tutorial-new-page.md)
+- [代码生成管线](./tutorial-codegen.md)

@@ -244,76 +244,63 @@ export default defineUserConfig({
                     ],
                 },
             ],
-            // GoWind UBA 侧边栏
+            // GoWind UBA 侧边栏（按角色分栏）
             '/uba/': [
                 {
                     text: '介绍',
                     children: [
                         '/uba/intro.md',
-                        '/uba/installation.md',
                     ],
                 },
                 {
-                    text: '后端文档',
+                    text: '架构参考',
                     children: [
-                        '/uba/backend-architecture.md',
+                        '/uba/architecture.md',
                         '/uba/backend-modules.md',
                         '/uba/backend-api.md',
-                        '/uba/backend-config-deploy.md',
-                        '/uba/backend-extension.md',
-                    ],
-                },
-                {
-                    text: '前端文档',
-                    children: [
                         '/uba/frontend-architecture.md',
-                        '/uba/frontend-modules.md',
                     ],
                 },
                 {
-                    text: '入门教程',
+                    text: '开发者指南（二开）',
                     children: [
-                        '/uba/tutorial-sdk-integration.md',
-                        '/uba/tutorial-data-pipeline.md',
+                        '/uba/installation.md',
                         '/uba/tutorial-codegen.md',
+                        '/uba/tutorial-new-service.md',
+                        '/uba/tutorial-new-entity.md',
+                        '/uba/tutorial-new-page.md',
                     ],
                 },
                 {
-                    text: '核心教程',
+                    text: '运维指南',
                     children: [
-                        '/uba/tutorial-event-analysis.md',
-                        '/uba/tutorial-funnel-analysis.md',
-                        '/uba/tutorial-session-analysis.md',
-                        '/uba/tutorial-path-analysis.md',
-                        '/uba/tutorial-user-profile.md',
-                        '/uba/tutorial-retention-analysis.md',
+                        '/uba/deploy-docker.md',
+                        '/uba/deploy-config.md',
+                        '/uba/deploy-pm2.md',
+                        '/uba/deploy-superset.md',
                     ],
                 },
                 {
-                    text: '进阶教程',
+                    text: '数据分析师指南',
                     children: [
-                        '/uba/tutorial-user-segmentation.md',
-                        '/uba/tutorial-risk-detection.md',
-                        '/uba/tutorial-olap-engine.md',
-                        '/uba/tutorial-id-mapping.md',
-                        '/uba/tutorial-webhook-alert.md',
-                        '/uba/tutorial-superset-integration.md',
+                        '/uba/analyst-getting-started.md',
+                        '/uba/analyst-event-trend.md',
+                        '/uba/analyst-funnel.md',
+                        '/uba/analyst-retention.md',
+                        '/uba/analyst-olap-cookbook.md',
                     ],
                 },
                 {
-                    text: '高阶教程',
+                    text: 'SDK 接入',
                     children: [
-                        '/uba/tutorial-task-scheduling.md',
-                        '/uba/tutorial-sse-push.md',
-                        '/uba/tutorial-permission-system.md',
-                        '/uba/tutorial-login-security.md',
+                        '/uba/sdk-web.md',
+                        '/uba/sdk-csharp.md',
                     ],
                 },
                 {
-                    text: '综合教程',
+                    text: '附录',
                     children: [
-                        '/uba/tutorial-fullstack-integration.md',
-                        '/uba/tutorial-deploy.md',
+                        '/uba/appendix.md',
                     ],
                 },
             ],

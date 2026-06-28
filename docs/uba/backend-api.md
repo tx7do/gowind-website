@@ -1,219 +1,222 @@
-# UBA Protobuf API 定义
+# UBA 后端 API 契约
 
-GoWind UBA 采用 **Protobuf First** 的 API 开发模式，所有接口通过 Protobuf 定义，借助 Buf 工具链自动生成 Go 服务端代码、TypeScript 客户端代码和 OpenAPI 文档。
+本文档基于真实的 Protobuf 定义（`backend/api/protos/`）梳理 UBA 对外/对内 API 契约，是二次开发与 SDK 联调的权威参考。
 
-## 一、API 路由前缀
+> 接口契约优先：所有 API 由 `.proto` 定义，经 buf 生成 Go / TypeScript / OpenAPI 代码。详见 [代码生成管线](./tutorial-codegen.md)。
 
-| 服务 | 路由前缀 | 说明 |
-|------|----------|------|
-| Collector Service | `/uba/v1/` | 数据采集接口（SDK 调用） |
-| Admin Service | `/admin/v1/` | 管理后台接口 |
+---
 
-## 二、Collector Service API
+## 一、proto 分层
 
-Collector 是数据采集入口，接收 SDK 上报的事件数据。
+```
+api/protos/
+├── uba/service/v1/        # UBA 领域消息 + gRPC 服务契约（Core 实现）
+│   ├── analytics.proto     # 分析聚合
+│   ├── behavior_event.proto# 行为事件
+│   ├── report.proto        # 上报服务（Collector 实现）
+│   ├── session.proto / event_path.proto
+│   ├── risk_event.proto / risk_rule.proto
+│   ├── application.proto / event_schema.proto / object.proto
+│   ├── tag_definition.proto / user_tag.proto / id_mapping.proto
+│   ├── user_behavior_profile.proto / webhook.proto
+│   ├── common.proto / uba_error.proto
+├── admin/service/v1/      # 管理后台 HTTP 网关（Admin 转发实现，i_ 前缀）
+│   ├── i_analytics.proto / i_behavior_event.proto / i_application.proto
+│   ├── i_session.proto / i_event_path.proto / i_event_schema.proto
+│   ├── i_risk_event.proto / i_risk_rule.proto / i_webhook.proto
+│   ├── i_tag_definition.proto / i_user_tag.proto / i_id_mapping.proto
+│   ├── i_user.proto / i_role.proto / i_permission*.proto / i_menu.proto
+│   ├── i_authentication.proto / i_login_policy.proto / i_tenant.proto
+│   ├── i_dict_*.proto / i_language.proto / i_file*.proto / i_task.proto
+│   ├── i_internal_message*.proto / i_org_unit.proto / i_position.proto
+│   └── i_*_audit_log.proto / i_admin_portal.proto
+└── <其他领域>/            # authentication / permission / dict / identity ...
+```
 
-| RPC | 方法 | 路由 | 说明 |
+> **只有 `admin/service/v1/*.proto` 会生成前端 TypeScript 客户端**（见 `api/buf.admin.typescript.gen.yaml` 的 `inputs.paths`）。
+
+---
+
+## 二、上报服务（Collector）
+
+### `ReportService`（`uba/service/v1/report.proto`）
+
+| RPC | 说明 |
+|-----|------|
+| `PostReport(PostReportRequest) returns (PostReportResponse)` | 统一上报接口，支持混合上报行为/风险事件 |
+
+### HTTP 端点
+
+- `POST /uba/v1/report`
+
+### 鉴权
+
+- `appId` + `appSecret` 放在**请求体**（非 Header），无 Authorization token。
+- 鉴权失败返回 `401`，SDK **不重试**。
+
+### 请求体结构（camelCase，protojson 编码）
+
+```jsonc
+{
+  "appId": "your_app_id",
+  "appSecret": "your_app_secret",
+  "clientInfo": { "userAgent": "...", "referer": "..." },
+  "events": [
+    {
+      "eventType": "BEHAVIOR",        // BEHAVIOR | RISK
+      "eventId": "uuid",              // SDK 自动生成，唯一
+      "eventName": "click",           // 必填
+      "eventTime": "RFC3339",         // SDK 自动补全
+      "deviceId": "...",              // SDK 持久化，同设备稳定
+      "sessionId": "...",             // 会话级
+      "platform": "web",              // SDK 探测
+      "userId": 1001,                 // identify 后自动带
+      "properties": { "button": "buy" },
+      "behavior": { "objectType": "button", "objectId": "btn_buy" }
+    }
+  ]
+}
+```
+
+> `tenantId` **不上报**，服务端根据 appId 权威识别并覆盖，保证多租户隔离。
+
+### 事件类型（events 元素的 oneof payload）
+
+| 类型 | 字段 | 触发 API |
+|------|------|---------|
+| 行为事件（`BEHAVIOR`） | `behavior` + `properties` | SDK `track` / `trackBehavior` |
+| 风险事件（`RISK`） | `risk`（riskType / riskLevel / riskScore / description） | SDK `trackRisk` |
+
+### 响应约定
+
+- HTTP `200` 也可能含**部分失败**：响应体 `failedCount > 0` 或 `errorsByType` 非空时，SDK 记录 warn。
+- 错误码：`400` 校验失败、`401` 鉴权失败（不重试）、`500` 服务端错误（重试）。
+- 错误体遵循 Kratos error envelope 格式。
+
+---
+
+## 三、分析聚合服务（Analytics）
+
+### `AnalyticsService`（`uba/service/v1/analytics.proto`）
+
+共 **5 个**聚合 RPC：
+
+| RPC | 请求 | 响应 | 用途 |
 |-----|------|------|------|
-| PostReport | POST | `/uba/v1/report` | 统一事件上报（支持批量、混合类型） |
-| HealthCheck | GET | `/uba/v1/health` | 服务健康检查 |
+| `EventTrend` | `EventTrendRequest` | `EventTrendResponse` | 事件量趋势（时间分桶） |
+| `Funnel` | `FunnelRequest` | `FunnelResponse` | 漏斗分析 |
+| `Retention` | `RetentionRequest` | `RetentionResponse` | 队列留存矩阵 |
+| `GroupBy` | `GroupByRequest` | `GroupByResponse` | 维度分组聚合 |
+| `ActiveUsers` | `ActiveUsersRequest` | `ActiveUsersResponse` | DAU / WAU / MAU |
 
-### 2.1 事件上报请求
+### 公共消息
 
-```protobuf
-// collector/service/v1/i_report.proto
-service ReportService {
-  rpc PostReport(PostReportRequest) returns (PostReportResponse) {
-    option (google.api.http) = {
-      post: "/uba/v1/report"
-      body: "*"
-    };
-  }
-}
+- `AnalyticsGranularity` 枚举：`UNSPECIFIED=0`、`HOUR=1`、`DAY=2`、`WEEK=3`、`MONTH=4`。
+- `TimeRange`：`start_ms`（含）、`end_ms`（含），Unix 毫秒。未传时默认结束=现在、开始=7 天前。
+- `TimeSeriesPoint`：`timestamp`（ms）、`value`（double）。
 
-message PostReportRequest {
-  optional string app_id = 1 [json_name = "app_id"];
-  optional string app_secret = 2 [json_name = "app_secret"];
-  repeated ReportEvent events = 3;
-  optional ClientInfo client = 4;
-}
+### 各请求要点
 
-message ReportEvent {
-  optional EventType event_type = 1;
-  oneof payload {
-    BehaviorEvent behavior = 10;
-    RiskEvent risk = 11;
-  }
-}
+- **EventTrendRequest**：`time_range`、`granularity`、可选 `app_id` / `event_name` / `platform`。
+- **FunnelRequest**：`time_range`、`steps`（`repeated string`，**≥2**）、可选 `app_id`、`window_ms`（默认 30 分钟）。`FunnelResponse` 含每步用户数、`conversion_rate`、`overall_rate`、`overall_conversion`。
+- **RetentionRequest**：`time_range`、可选 `app_id`、`retention_type`（`ACTIVE` 默认 / `EVENT`）、`event_name`、`max_offset_days`（默认 7）。`RetentionResponse` 含 cohorts（`cohort_date` / `size` / `cells[offset_days,count,rate]`）。
+- **GroupByRequest**：`time_range`、`dimension`（单维度，**白名单**：`platform/channel/country/app_version/event_name/event_category/os/network`）、`metric`（`COUNT` 默认 / `UNIQUE_USER` / `SUM_AMOUNT`）、可选 `app_id` / `event_name` / `top_n`（默认 20）。
+- **ActiveUsersRequest**：`time_range`、`granularity`、可选 `app_id`。响应 `ActiveUsersPoint` 含 `dau` / `wau`（滚动 7 天）/ `mau`（滚动 30 天）。
 
-enum EventType {
-  BEHAVIOR = 0;
-  RISK = 1;
-}
-```
+> ⚠️ **已知限制**：当前 `ActiveUsers` 后端实现把 `wau`/`mau` 回填为 `dau` 值（占位），滚动窗口尚未实现。详见 [附录](./appendix.md)。
 
-### 2.2 事件上报响应
+### Admin HTTP 端点（`admin/service/v1/i_analytics.proto`）
 
-```protobuf
-message PostReportResponse {
-  optional bool success = 1;
-  optional string message = 2;
-  optional uint32 success_count = 3;
-  optional uint32 failed_count = 4;
-  optional RiskAction risk_action = 5;  // 实时风控决策
-}
-```
+全部 `POST`、`body: "*"`，转发至 Core gRPC：
 
-## 三、Admin Service API
+| 方法 | HTTP 路径 |
+|------|----------|
+| `EventTrend` | `POST /admin/v1/analytics/event-trend` |
+| `Funnel` | `POST /admin/v1/analytics/funnel` |
+| `Retention` | `POST /admin/v1/analytics/retention` |
+| `GroupBy` | `POST /admin/v1/analytics/group-by` |
+| `ActiveUsers` | `POST /admin/v1/analytics/active-users` |
 
-Admin Service 提供 40+ 个 Service，覆盖完整的后台管理功能。
+---
 
-### 3.1 UBA 核心服务
+## 四、行为事件服务
 
-| Service | 路由 | 说明 |
-|---------|------|------|
-| ApplicationService | `/admin/v1/apps` | 应用管理（AppID/AppKey/AppSecret） |
-| SessionService | `/admin/v1/sessions` | 会话查询 |
-| EventPathService | `/admin/v1/event-paths` | 用户路径分析 |
-| UserBehaviorProfileService | `/admin/v1/user-behavior-profiles` | 用户行为画像 |
-| ObjectService | `/admin/v1/objects` | 对象维度管理 |
-| IDMappingService | `/admin/v1/id-mappings` | 跨平台 ID 映射 |
+### `BehaviorEventService`（`uba/service/v1/behavior_event.proto`）
 
-### 3.2 风控服务
+| RPC | 说明 |
+|-----|------|
+| `Create(BehaviorEvent) returns (Empty)` | 单条入库 |
+| `BatchCreate(BatchCreateBehaviorEventRequest) returns (Empty)` | 批量入库 |
+| `List(PagingRequest) returns (ListBehaviorEventResponse)` | 分页查询 |
+| `Get(GetBehaviorEventRequest) returns (BehaviorEvent)` | 单条查询 |
 
-| Service | 路由 | 说明 |
-|---------|------|------|
-| RiskRuleService | `/admin/v1/risk-rules` | 风控规则管理 |
-| RiskEventService | `/admin/v1/risk-events` | 风险事件管理 |
-| WebhookService | `/admin/v1/webhooks` | Webhook 配置 |
+### `BehaviorEvent` 字段全集（对应 `events_fact`）
 
-### 3.3 标签服务
+| 字段 | 类型 | 分组 |
+|------|------|------|
+| `event_id`, `tenant_id` | string / uint32 | 路由/标识 |
+| `user_id`, `device_id`, `account_id`, `global_user_id` | uint32 / string | 主体（Who） |
+| `event_time`, `event_ts`, `server_time` | Timestamp / int64 | 时间 |
+| `event_category`, `event_name`, `event_action` | string | 行为（What） |
+| `object_type`, `object_id`, `object_name` | string | 对象 |
+| `session_id`, `session_seq` | string / uint32 | 会话上下文 |
+| `platform`, `os`, `app_version`, `channel` | string | 环境 |
+| `ip`, `ip_city`, `country`, `network`, `geo`, `user_agent`, `referer` | string | 网络/位置 |
+| `context` | map\<string,string\> | 业务上下文 |
+| `duration_ms`, `amount`, `quantity`, `score`, `metrics` | uint32/string/int32/map | 指标 |
+| `properties` | map\<string,string\> | 扩展属性 |
+| `op_result`, `error_code`, `risk_level`, `trace_id` | string | 企业/运维 |
+| `created_at`, `updated_at` | Timestamp | 时间戳 |
 
-| Service | 路由 | 说明 |
-|---------|------|------|
-| TagDefinitionService | `/admin/v1/tag-definitions` | 标签定义管理 |
-| UserTagService | `/admin/v1/user-tags` | 用户标签管理 |
+---
 
-### 3.4 组织与权限
+## 五、CRUD 服务一览
 
-| Service | 路由 | 说明 |
-|---------|------|------|
-| UserService | `/admin/v1/users` | 用户管理 |
-| RoleService | `/admin/v1/roles` | 角色管理 |
-| TenantService | `/admin/v1/tenants` | 租户管理 |
-| OrgUnitService | `/admin/v1/org-units` | 部门管理 |
-| PositionService | `/admin/v1/positions` | 职位管理 |
-| PermissionService | `/admin/v1/permissions` | 权限管理 |
-| MenuService | `/admin/v1/menus` | 菜单管理 |
+以下服务均提供标准 CRUD（`List`/`Count`/`Get`/`Create`/`Update`/`Delete`，部分含 `BatchCreate`），Admin 层一一对应转发：
 
-### 3.5 系统管理
+| 领域 | Core 服务 / proto | Admin proto |
+|------|------------------|-------------|
+| 会话 | `SessionService` / `session.proto` | `i_session.proto` |
+| 用户路径 | `EventPathService` / `event_path.proto` | `i_event_path.proto` |
+| 事件 Schema | `EventSchemaService` / `event_schema.proto` | `i_event_schema.proto` |
+| 行为对象 | `ObjectService` / `object.proto` | `i_object.proto` |
+| UBA 应用 | `ApplicationService` / `application.proto` | `i_application.proto` |
+| 风险事件 | `RiskEventService` / `risk_event.proto` | `i_risk_event.proto` |
+| 风险规则 | `RiskRuleService` / `risk_rule.proto` | `i_risk_rule.proto` |
+| Webhook | `WebhookService` / `webhook.proto` | `i_webhook.proto` |
+| 标签定义 | `TagDefinitionService` / `tag_definition.proto` | `i_tag_definition.proto` |
+| 用户标签 | `UserTagService` / `user_tag.proto` | `i_user_tag.proto` |
+| ID 映射 | `IdMappingService` / `id_mapping.proto` | `i_id_mapping.proto` |
+| 用户行为画像 | `UserBehaviorProfileService` / `user_behavior_profile.proto` | `i_user_behavior_profile.proto` |
+| 用户/用户档案 | `UserService` 等 | `i_user.proto` / `i_user_profile.proto` |
+| 租户/组织/岗位 | `TenantService` / `OrgUnitService` / `PositionService` | `i_tenant.proto` / `i_org_unit.proto` / `i_position.proto` |
+| 角色/权限/菜单 | `RoleService` / `PermissionService` / `MenuService` | `i_role.proto` / `i_permission*.proto` / `i_menu.proto` |
+| 字典/语言 | `DictTypeService` / `DictEntryService` / `LanguageService` | `i_dict_*.proto` / `i_language.proto` |
+| 认证/登录策略 | `AuthenticationService` / `LoginPolicyService` | `i_authentication.proto` / `i_login_policy.proto` |
+| 文件 | `FileService` / `FileTransferService` | `i_file.proto` / `i_file_transfer.proto` |
+| 站内消息 | `InternalMessageService`（+ Category/Recipient） | `i_internal_message*.proto` |
+| 任务 | `TaskService` | `i_task.proto` |
+| 审计日志（6 类） | `*AuditLogService` / `PolicyEvaluationLogService` | `i_*_audit_log.proto` 等 |
+| API 元数据 | `ApiService` | `i_api.proto` |
 
-| Service | 路由 | 说明 |
-|---------|------|------|
-| AuthenticationService | `/admin/v1/login` | 登录认证 |
-| AdminPortalService | `/admin/v1/portal` | 管理门户 |
-| DictTypeService / DictEntryService | `/admin/v1/dict-types` `/admin/v1/dict-entries` | 字典管理 |
-| TaskService | `/admin/v1/tasks` | 任务调度 |
-| FileService / FileTransferService | `/admin/v1/files` | 文件管理 |
-| LanguageService | `/admin/v1/languages` | 语言管理 |
-| InternalMessageService | `/admin/v1/internal-messages` | 站内信 |
-| LoginPolicyService | `/admin/v1/login-policies` | 登录策略 |
+> 完整请求/响应消息定义请直接查阅 `backend/api/protos/` 对应 `.proto` 文件，或运行 `make openapi` 生成的 Swagger 文档。
 
-### 3.6 审计日志
+---
 
-| Service | 路由 | 说明 |
-|---------|------|------|
-| ApiAuditLogService | `/admin/v1/api-audit-logs` | API 审计日志 |
-| LoginAuditLogService | `/admin/v1/login-audit-logs` | 登录日志 |
-| OperationAuditLogService | `/admin/v1/operation-audit-logs` | 操作日志 |
-| DataAccessAuditLogService | `/admin/v1/data-access-audit-logs` | 数据访问日志 |
-| PermissionAuditLogService | `/admin/v1/permission-audit-logs` | 权限审计日志 |
-| PolicyEvaluationLogService | `/admin/v1/policy-evaluation-logs` | 策略评估日志 |
-
-## 四、Protobuf 目录结构
-
-```
-backend/api/protos/
-├── uba/                             # UBA 领域定义
-│   └── service/v1/
-│       ├── behavior_event.proto      # 行为事件模型
-│       ├── session.proto             # 会话模型
-│       ├── event_path.proto          # 路径分析模型
-│       ├── user_behavior_profile.proto # 用户行为画像
-│       ├── user_tag.proto            # 用户标签
-│       ├── tag_definition.proto      # 标签定义
-│       ├── id_mapping.proto          # ID 映射
-│       ├── object.proto              # 对象维度
-│       ├── risk_event.proto          # 风险事件
-│       ├── risk_rule.proto           # 风控规则
-│       ├── webhook.proto             # Webhook 配置
-│       ├── application.proto         # 应用管理
-│       ├── report.proto              # 事件上报服务
-│       ├── common.proto              # 公共类型
-│       └── uba_error.proto           # 错误定义
-├── collector/                       # 采集服务
-│   └── service/v1/
-│       ├── i_report.proto            # 上报接口
-│       └── collector_error.proto
-├── admin/                           # 管理后台服务
-│   └── service/v1/
-│       ├── i_application.proto       # 应用管理接口
-│       ├── i_session.proto           # 会话接口
-│       ├── i_event_path.proto        # 路径接口
-│       ├── i_risk_rule.proto         # 风控规则接口
-│       ├── i_risk_event.proto        # 风险事件接口
-│       ├── i_webhook.proto           # Webhook 接口
-│       ├── i_tag_definition.proto    # 标签定义接口
-│       ├── i_user_tag.proto          # 用户标签接口
-│       ├── i_user_behavior_profile.proto # 用户画像接口
-│       ├── i_id_mapping.proto        # ID 映射接口
-│       ├── i_object.proto            # 对象维度接口
-│       └── ...                       # 组织/权限/系统管理
-├── identity/                        # 身份管理
-├── permission/                      # 权限管理
-├── authentication/                  # 认证服务
-├── audit/                           # 审计日志
-├── dict/                            # 字典管理
-├── resource/                        # 资源管理
-├── storage/                         # 存储管理
-├── task/                            # 任务调度
-└── internal_message/                # 站内信
-```
-
-## 五、代码生成
-
-```shell
-cd backend
-
-# 生成 Protobuf Go 代码
-make api
-
-# 生成 OpenAPI v3 文档
-make openapi
-
-# 生成 Ent ORM 代码
-make ent
-
-# 生成 Wire 依赖注入
-make wire
-
-# 一键生成全部代码
-make gen
-```
-
-## 六、Swagger 文档
+## 六、获取可交互文档
 
 ```bash
-# Collector API Swagger
-http://localhost:9800/docs/
-
-# Admin API Swagger
-http://localhost:9700/docs/
+cd backend
+make openapi   # 生成 OpenAPI / Swagger（基于 admin / collector proto）
 ```
 
-## 相关文档
+启动 Admin / Collector 服务后（`enable_swagger: true`），访问各自 Swagger UI 浏览与试调接口。
 
-- [UBA 后端架构总览](./backend-architecture.md)
-- [UBA 后端模块总览](./backend-modules.md)
-- [UBA 配置与部署指南](./backend-config-deploy.md)
-- [API 客户端代码生成](./tutorial-codegen.md)
+---
+
+## 七、相关文档
+
+- [系统架构](./architecture.md)
+- [后端模块总览](./backend-modules.md)
+- [代码生成管线](./tutorial-codegen.md)
+- [OLAP 查询手册](./analyst-olap-cookbook.md)

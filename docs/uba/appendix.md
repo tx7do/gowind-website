@@ -6,9 +6,9 @@
 
 | 服务 / 组件 | 服务监听端口 | docker-compose 宿主映射 | 备注 |
 |-------------|------------|------------------------|------|
-| **Admin Service** REST | `5600` | 9700 | 不一致，需统一 |
-| **Admin Service** SSE | `5601` | 9701 | 不一致，需统一 |
-| **Collector Service** HTTP | `5700` | 9800, 9801 | 不一致，需统一 |
+| **Admin Service** REST | `5600` | 5600 | 一致 |
+| **Admin Service** SSE | `5601` | 5601 | 一致 |
+| **Collector Service** HTTP | `5700` | 5700 | 一致 |
 | **Core Service** gRPC | 动态（etcd 发现） | （不映射） | 容器内通过 etcd 发现 |
 | PostgreSQL | 5432 | 5432 | 一致 |
 | Redis | 6379 | 6379 | 一致 |
@@ -20,7 +20,7 @@
 | Doris BE | 8040, 9050 | 8040, 9050 | 一致 |
 | Superset | 8088 | 8088 | 一致 |
 
-> 统一原则：以上报/查询用的「服务监听端口」为准。Docker 映射与服务监听不一致处（admin/collector），生产化时需对齐（改 compose 映射或改服务 `server.yaml`）。详见 [配置详解](./deploy-config.md)。
+> docker-compose 的端口映射已与服务监听端口统一（admin `5600/5601`、collector `5700`），宿主机直接用监听端口访问即可。详见 [配置详解](./deploy-config.md)。
 
 ---
 
@@ -61,7 +61,7 @@
 
 ### 数据库一致性提醒
 
-- compose 默认 `POSTGRES_DB=gwubd`，服务 `data.yaml` 连 `gw_uba`——**需对齐**。
+- docker-compose 已统一 `POSTGRES_DB=gw_uba`，与服务 `data.yaml` 的 `dbname=gw_uba` 一致。
 - collector `data.yaml` 的 kafka 默认 `127.0.0.1:9092`，容器化需改 `kafka:9092`。
 - PostgreSQL 表结构由 Ent 生成（无手写 schema.sql），`sql/postgresql/` 仅种子/演示数据。
 

@@ -80,11 +80,11 @@ make docker-down   # docker compose down
 
 | 服务 | 镜像 | 宿主端口 | SERVICE_NAME | depends_on |
 |------|------|---------|--------------|------------|
-| **admin-service** | `go-wind-uba/admin-service:1.0.0` | 9700, 9701 | `admin` | postgres, redis, minio, etcd, jaeger |
-| **collector-service** | `go-wind-uba/collector-service:1.0.0` | 9800, 9801 | `collector` | postgres, redis, minio, etcd, jaeger |
+| **admin-service** | `go-wind-uba/admin-service:1.0.0` | 5600, 5601 | `admin` | postgres, redis, minio, etcd, jaeger |
+| **collector-service** | `go-wind-uba/collector-service:1.0.0` | 5700 | `collector` | postgres, redis, minio, etcd, jaeger |
 | **core-service** | `go-wind-uba/core-service:1.0.0` | （不映射宿主端口） | `core` | postgres, redis, minio, etcd, jaeger |
 
-> ⚠️ **端口说明**：compose 映射的 `9700/9701`、`9800/9801` 是**宿主机 → 容器**映射。但服务 YAML 里 `server.yaml` 实际监听的是 admin `5600/5601`、collector `5700`。当前 compose 端口映射与服务监听端口**不一致**——生产化时需统一（改 compose 映射或改服务 `server.yaml`）。详见 [配置详解 · 端口对照](./deploy-config.md)。
+> 端口映射与服务 `server.yaml` 监听端口一致（admin `5600/5601`、collector `5700`），宿主机直接用对应端口访问即可。详见 [配置详解 · 端口对照](./deploy-config.md)。
 
 ### libs 模式
 
@@ -111,10 +111,10 @@ Dockerfile（`backend/Dockerfile`）通过 `--build-arg SERVICE_NAME={admin|coll
 
 ## 五、网络与依赖细节
 
-- **应用网络**：三服务都在 `app-tier`，互相用服务名（`core-service:5600` 等）通信；core 的 gRPC 经 etcd 发现。
+- **应用网络**：三服务都在 `app-tier`，互相用服务名通信（admin 调 core 的 gRPC，经 etcd 发现；core 的 gRPC 是动态端口，不固定为 5600）。
 - **Doris 静态 IP**：FE/BE 用了 `172.20.80.x` 静态地址（Doris 集群配置要求），不要随意改网络段。
 - **Kafka advertised listener**：compose 内 Kafka 对容器内通告 `kafka:9092`，而 collector 的 `data.yaml` 默认连 `127.0.0.1:9092`。**容器化部署时需把 collector 的 kafka 地址改为 `kafka:9092`**。
-- **Postgres 库名**：compose 默认 `POSTGRES_DB=gwubd`，但服务 `data.yaml` 连的是 `gw_uba`——**需对齐**（改 compose env 或建库）。
+- **Postgres 库名**：compose 已统一 `POSTGRES_DB=gw_uba`，与服务 `data.yaml` 的 `dbname=gw_uba` 一致，无需额外对齐。
 
 ---
 

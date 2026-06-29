@@ -90,7 +90,7 @@ psql -h localhost -U postgres -c "CREATE DATABASE gw_uba;"
 psql -h localhost -U postgres -d gw_uba -f sql/postgresql/default-data.sql
 ```
 
-> Docker compose 默认 `POSTGRES_DB=gwubd`，但服务 `data.yaml` 连接的是 `gw_uba`，请注意对齐库名（详见 [配置详解](./deploy-config.md)）。
+> Docker compose 已统一 `POSTGRES_DB=gw_uba`（与服务 `data.yaml` 一致），开箱即用。**手动部署**（非 Docker）时需自行 `CREATE DATABASE gw_uba`，库名务必与 `data.yaml` 的 `dbname` 对齐（详见 [配置详解](./deploy-config.md)）。
 
 ### 2. OLAP 引擎（Doris / ClickHouse 二选一）
 

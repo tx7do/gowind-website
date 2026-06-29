@@ -127,7 +127,7 @@ graph TB
 | **Core Service** | gRPC 动态端口（etcd 发现） | 事件入库、分析建模、风险检测、标签管理、用户画像、数据同步——承载所有「重」业务逻辑。 |
 | **Admin Service** | HTTP `5600` / SSE `5601` | 管理后台的 HTTP 网关，**薄转发层**，请求转发至 Core，提供 SSE 推送与 Swagger 文档。 |
 
-> 关于端口的说明：上表为**服务实际监听端口**。Docker 容器映射（compose 中 admin `9700/9701`、collector `9800/9801`）仅是宿主机到容器的端口映射，请勿混淆。完整对照见 [附录 · 端口对照表](./appendix.md)。
+> 关于端口的说明：上表为**服务实际监听端口**，docker-compose 的宿主机映射已与之统一（admin `5600/5601`、collector `5700`），直接访问即可。完整对照见 [附录 · 端口对照表](./appendix.md)。
 
 ---
 

@@ -81,6 +81,7 @@ await uba.flush();
 | `timeout` | `8000` | 单次请求超时（**必须 < 服务端 10s**） |
 | `retryBaseDelay` | `1000` | 指数退避基础间隔（毫秒） |
 | `enableBeacon` | `true` | 页面卸载时用 sendBeacon 兜底 |
+| `autoTrack` | `true` | 是否启用自动采集（**当前仅自动采集 click**，详见「自动采集」一节） |
 | `debug` | `false` | 开启调试日志 |
 
 ---
@@ -98,12 +99,16 @@ await uba.flush();
 | `setSuperProperties(props)` | 设置公共属性（后续每条事件自动携带） |
 | `clearSuperProperties()` | 清除公共属性 |
 | `flush()` | 手动批量发送（关键事件后建议调用） |
+| `enableAutoTrack(enabled?)` | 运行时开关自动采集（默认仅 click） |
+| `pendingCount()` | 返回当前缓冲区待发条数 |
+| `destroy()` | 销毁实例，释放定时器与监听 |
+| `UbaClient.getInstance()` | 获取已初始化的单例 |
 
 ---
 
-## 六、自动采集字段
+## 六、自动补全字段与自动采集
 
-SDK 自动补全（无需业务设置）：
+### SDK 自动补全字段（每条事件都带）
 
 | 字段 | 来源 |
 |------|------|
@@ -113,7 +118,19 @@ SDK 自动补全（无需业务设置）：
 | `sessionId` | sessionStorage（标签关闭失效） |
 | `platform` | UA 探测：`web` / `ios` / `android` / `mini_program` / `node` |
 | `clientInfo.userAgent` | `navigator.userAgent` |
-| `properties.pageUrl` | 当前页面 URL |
+
+### 自动采集事件（autotrack）
+
+开启 `autoTrack`（默认 `true`）后，SDK 在 document 捕获阶段监听 **click**，自动上报一条名为 `click` 的行为事件，并填充热力图字段：
+
+| 字段 | 说明 |
+|------|------|
+| `clickX` / `clickY` | 点击视口坐标 |
+| `elementXpath` | 元素 XPath |
+| `pageUrl` | 当前页面 URL |
+| `viewportWidth` | 视口宽度 |
+
+> ⚠️ **当前 autotrack 仅采集 click**，没有 PV / pageView 自动采集、没有路由监听。页面浏览埋点需自行调用 `track('page_view', ...)`。
 
 ---
 
@@ -177,7 +194,7 @@ go run ./app/collector/service/cmd/server/ -c ./app/collector/service/configs
 |------|---------|
 | 上报返回 401 | appId/appSecret 错误，或应用状态非 `ON`；检查管理后台「应用管理」 |
 | 事件未入库但无报错 | 检查响应体 `failedCount`，可能字段校验部分失败；开启 SDK `debug` 查看日志 |
-| 数据查不到 | 当前 Kafka 消费未实现，数据停留在 Kafka——见 [系统架构 · Kafka 现状](./architecture.md) |
+| 数据查不到 | 确认上报返回 200 后，OLAP 引擎的 Kafka 消费作业是否正常落库——见 [系统架构 · Kafka 消费入库机制](./architecture.md) |
 | 页面跳转丢失事件 | 确认 `enableBeacon: true`（默认开启），卸载时用 sendBeacon 兜底 |
 
 ---

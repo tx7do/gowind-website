@@ -137,9 +137,31 @@ client.Track("scene_load", new() { ["scene"] = "Main" });
 
 > Timeout 默认 8 秒（必须 < 服务端 10 秒）。
 
+### `TrackOptions`（游戏维度字段）
+
+`Track`/`TrackBehavior` 的第三个参数，除已有的业务指标字段（`Amount`/`Quantity`/`Score`/`DurationMs` 等）外，**新增两个游戏专属维度**，用于支撑滚服留存 / 关卡分析等游戏模型：
+
+| 字段 | 类型 | 说明 | JSON tag |
+|------|------|------|---------|
+| `ServerId` | `string?` | 游戏区服 ID | `serverId` |
+| `Level` | `uint?` | 玩家等级 | `level` |
+
+填一次后，SDK 会同时写入顶层 `ReportEvent` 与 `behavior` payload（C# 属性 PascalCase，序列化为 camelCase JSON；`level` 序列化为整数）。示例：
+
+```csharp
+// 进入 5 区服、当前 32 级玩家完成关卡
+client.Track("level_finish",
+    new() { ["chapter"] = "1-1" },
+    new TrackOptions { ServerId = "5", Level = 32, Score = 100, DurationMs = 45000 });
+```
+
+> 这两个字段会落到 `events_fact` 表的 `server_id`（VARCHAR）、`level`（SMALLINT）列，被 `ServerRetention` / `LevelAnalysis` 等游戏分析模型直接使用。
+
 ---
 
-## 八、自动采集字段（因平台而异）
+## 八、自动补全字段（因平台而异）
+
+SDK 自动补全（无需业务设置）；**C# 端无 autotrack 自动埋点**（与 Web SDK 不同，Web 才有 click 自动采集），所有事件均需显式 `Track`：
 
 | 字段 | Unity | Godot |
 |------|-------|-------|
@@ -206,7 +228,7 @@ go run ./app/collector/service/cmd/server/ -c ./app/collector/service/configs
 | 上报返回 401 | appId/appSecret 错误，或应用状态非 `ON` |
 | Unity WebGL 上报失败 | 确认使用 `UnityWebRequestTransport` 而非默认 HttpClient |
 | Godot deviceId 不稳定 | 见第八节，自行持久化 |
-| 数据查不到 | 当前 Kafka 消费未实现，数据停留在 Kafka——见 [系统架构 · Kafka 现状](./architecture.md) |
+| 数据查不到 | 确认上报返回 200 后，OLAP 引擎的 Kafka 消费作业是否正常落库——见 [系统架构 · Kafka 消费入库机制](./architecture.md) |
 | 最后一批事件丢失 | 确认退出时调用了 `await FlushAsync()` |
 
 ---

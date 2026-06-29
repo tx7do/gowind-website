@@ -99,11 +99,14 @@ psql -h localhost -U postgres -d gw_uba -f sql/postgresql/default-data.sql
 ```bash
 # Doris（默认）：用 MySQL 协议连 FE 的 9030 端口
 mysql -h localhost -P 9030 -u root < sql/doris/1_base_tables.sql
-mysql -h localhost -P 9030 -u root < sql/doris/02_kafka_tables.sql   # Routine Load（参考）
+mysql -h localhost -P 9030 -u root < sql/doris/02_kafka_tables.sql   # 建立 Routine Load 消费 Kafka
 
 # 或 ClickHouse（需先把 UseClickHouse 改为 true 并重编译）
 clickhouse-client --queries-file sql/clickhouse/1_base_tables.sql
+clickhouse-client --queries-file sql/clickhouse/02_kafka_tables.sql  # 建立 Kafka 引擎表 + 物化视图消费 Kafka
 ```
+
+> 两个 `02_kafka_tables.sql` 分别为对应引擎建立「消费 Kafka → 写入事实表」的作业（Doris Routine Load / ClickHouse Kafka 引擎表 + 物化视图），是数据落库的关键，**必须执行**。详见 [系统架构 · Kafka 消费入库机制](./architecture.md)。
 
 ---
 
@@ -162,7 +165,7 @@ pnpm dev
 
 1. 登录管理后台 → 「数据采集 / 应用管理」新建一个应用，拿到 `appId` + `appSecret`。
 2. 用 Web SDK（或 `frontend/sdk/web/uba/test.html`）向 Collector（`5700`）上报一条 `POST /uba/v1/report`，确认返回 200、无 `failedCount`。
-3. ⚠️ **数据落库提醒**：当前 Core 内的 Kafka 消费者尚未实现，上报数据会停留在 Kafka，不会自动入 OLAP。联调查询前，可临时让上报直接走 Core 的 `BatchCreate`（同步写入），或先手工往 `events_fact` 灌测试数据。详见 [系统架构 · Kafka 消费现状](./architecture.md)。
+3. **数据落库自检**：上报数据由 OLAP 引擎的虚拟表消费 Kafka 自动落库（Doris 用 Routine Load、ClickHouse 用 Kafka 引擎表）。联调时若查询不到，先确认对应消费作业已建立并正常运行（Doris：`SHOW ROUTINE LOAD`）。详见 [系统架构 · Kafka 消费入库机制](./architecture.md)。
 
 ---
 

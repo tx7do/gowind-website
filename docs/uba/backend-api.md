@@ -99,15 +99,35 @@ api/protos/
 
 ### `AnalyticsService`（`uba/service/v1/analytics.proto`）
 
-共 **5 个**聚合 RPC：
+共 **25 个**分析模型 RPC（按场景分组，对应 proto 第 11-83 行）：
 
-| RPC | 请求 | 响应 | 用途 |
-|-----|------|------|------|
-| `EventTrend` | `EventTrendRequest` | `EventTrendResponse` | 事件量趋势（时间分桶） |
-| `Funnel` | `FunnelRequest` | `FunnelResponse` | 漏斗分析 |
-| `Retention` | `RetentionRequest` | `RetentionResponse` | 队列留存矩阵 |
-| `GroupBy` | `GroupByRequest` | `GroupByResponse` | 维度分组聚合 |
-| `ActiveUsers` | `ActiveUsersRequest` | `ActiveUsersResponse` | DAU / WAU / MAU |
+| 场景 | RPC | 用途 |
+|------|-----|------|
+| **基础聚合** | `EventTrend` | 事件量趋势（时间分桶） |
+| | `GroupBy` | 维度分组聚合（白名单维度 + 指标） |
+| | `ActiveUsers` | DAU / WAU / MAU（日级 HLL 滚动窗口真值） |
+| **转化与路径** | `Funnel` | 漏斗分析（多步转化） |
+| | `Retention` | 同期群留存矩阵 |
+| | `PathSankey` | 热门转化路径（桑基图） |
+| | `BehaviorSequence` | 行为序列分析 |
+| **用户深度** | `Attribution` | 归因分析（首触/末触） |
+| | `Distribution` | 分布分析（时长分桶 + 分位） |
+| | `Segmentation` | 用户分群 / 圈选 |
+| | `Click` | 点击热力图 |
+| | `Interval` | 间隔时间分析 |
+| **生命周期** | `Lifecycle` | 用户生命周期 |
+| | `Churn` | 流失与回流分析 |
+| | `NewVsOld` | 新老用户对比 |
+| | `Matrix` | 矩阵 / 象限分析 |
+| **营收与价值** | `Revenue` | 营收分析（ARPU/ARPPU/GMV） |
+| | `WhaleTier` | 付费分层（鲸鱼用户） |
+| | `LTV` | 历史生命周期价值 |
+| **会话与异常** | `SessionAnalysis` | 会话分析（跳出率/深度/分位） |
+| | `Anomaly` | 同比环比 / 异常检测 |
+| **游戏专属** | `LevelAnalysis` | 关卡 / 数值平衡分析 |
+| | `ServerRetention` | 滚服留存（按区服） |
+| | `OnlineStats` | 同时在线 PCU / ACU |
+| | `Economy` | 经济系统 / 代币流向 |
 
 ### 公共消息
 
@@ -117,17 +137,17 @@ api/protos/
 
 ### 各请求要点
 
-- **EventTrendRequest**：`time_range`、`granularity`、可选 `app_id` / `event_name` / `platform`。
-- **FunnelRequest**：`time_range`、`steps`（`repeated string`，**≥2**）、可选 `app_id`、`window_ms`（默认 30 分钟）。`FunnelResponse` 含每步用户数、`conversion_rate`、`overall_rate`、`overall_conversion`。
-- **RetentionRequest**：`time_range`、可选 `app_id`、`retention_type`（`ACTIVE` 默认 / `EVENT`）、`event_name`、`max_offset_days`（默认 7）。`RetentionResponse` 含 cohorts（`cohort_date` / `size` / `cells[offset_days,count,rate]`）。
-- **GroupByRequest**：`time_range`、`dimension`（单维度，**白名单**：`platform/channel/country/app_version/event_name/event_category/os/network`）、`metric`（`COUNT` 默认 / `UNIQUE_USER` / `SUM_AMOUNT`）、可选 `app_id` / `event_name` / `top_n`（默认 20）。
-- **ActiveUsersRequest**：`time_range`、`granularity`、可选 `app_id`。响应 `ActiveUsersPoint` 含 `dau` / `wau`（滚动 7 天）/ `mau`（滚动 30 天）。
+25 个模型的请求消息（`*Request`）遵循统一约定：
 
-> ⚠️ **已知限制**：当前 `ActiveUsers` 后端实现把 `wau`/`mau` 回填为 `dau` 值（占位），滚动窗口尚未实现。详见 [附录](./appendix.md)。
+- **公共字段**：`time_range`（`TimeRange`）、可选 `app_id`（在仓库里作为 `tenant_id` 隔离谓词，`0`/缺省表示全部租户）。时间序列类模型另带 `granularity`（`AnalyticsGranularity`）。
+- **过滤字段**：按模型语义携带 `event_name` / `platform` / `dimension` 等。`GroupBy` 的 `dimension` 走**白名单**：`platform/channel/country/app_version/event_name/event_category/os/network`（游戏模型另支持 `server_id`/`level` 等）。
+- **特有参数**：如 `FunnelRequest.steps`（`repeated string`，**≥2**）、`RetentionRequest.retention_type`（`ACTIVE`/`EVENT`）+ `max_offset_days`、`GroupByRequest.metric`（`COUNT`/`UNIQUE_USER`/`SUM_AMOUNT`）等。
+
+> 25 个模型逐字段的完整定义请查阅 `backend/api/protos/uba/service/v1/analytics.proto`（请求/响应消息与字段注释齐全），或运行 `make openapi` 生成的 Swagger 文档。
 
 ### Admin HTTP 端点（`admin/service/v1/i_analytics.proto`）
 
-全部 `POST`、`body: "*"`，转发至 Core gRPC：
+全部 `POST`、`body: "*"`，转发至 Core gRPC，路径规则统一为 `POST /admin/v1/analytics/<kebab-case 方法名>`：
 
 | 方法 | HTTP 路径 |
 |------|----------|
@@ -136,6 +156,28 @@ api/protos/
 | `Retention` | `POST /admin/v1/analytics/retention` |
 | `GroupBy` | `POST /admin/v1/analytics/group-by` |
 | `ActiveUsers` | `POST /admin/v1/analytics/active-users` |
+| `Attribution` | `POST /admin/v1/analytics/attribution` |
+| `Distribution` | `POST /admin/v1/analytics/distribution` |
+| `BehaviorSequence` | `POST /admin/v1/analytics/behavior-sequence` |
+| `Segmentation` | `POST /admin/v1/analytics/segmentation` |
+| `Click` | `POST /admin/v1/analytics/click` |
+| `Lifecycle` | `POST /admin/v1/analytics/lifecycle` |
+| `Churn` | `POST /admin/v1/analytics/churn` |
+| `Interval` | `POST /admin/v1/analytics/interval` |
+| `Matrix` | `POST /admin/v1/analytics/matrix` |
+| `Revenue` | `POST /admin/v1/analytics/revenue` |
+| `SessionAnalysis` | `POST /admin/v1/analytics/session-analysis` |
+| `Anomaly` | `POST /admin/v1/analytics/anomaly` |
+| `NewVsOld` | `POST /admin/v1/analytics/new-vs-old` |
+| `PathSankey` | `POST /admin/v1/analytics/path-sankey` |
+| `LevelAnalysis` | `POST /admin/v1/analytics/level-analysis` |
+| `WhaleTier` | `POST /admin/v1/analytics/whale-tier` |
+| `LTV` | `POST /admin/v1/analytics/ltv` |
+| `ServerRetention` | `POST /admin/v1/analytics/server-retention` |
+| `OnlineStats` | `POST /admin/v1/analytics/online-stats` |
+| `Economy` | `POST /admin/v1/analytics/economy` |
+
+> ⚠️ **已知限制**：`ActiveUsers` 的 `wau`/`mau` 在**日级**已基于 HLL 滚动窗口输出真值；仅 HOUR 粒度因无小时级状态退化为等于 DAU。详见 [附录](./appendix.md)。
 
 ---
 
@@ -166,6 +208,8 @@ api/protos/
 | `duration_ms`, `amount`, `quantity`, `score`, `metrics` | uint32/string/int32/map | 指标 |
 | `properties` | map\<string,string\> | 扩展属性 |
 | `op_result`, `error_code`, `risk_level`, `trace_id` | string | 企业/运维 |
+| `click_x`, `click_y`, `element_xpath`, `page_url`, `viewport_width` | uint32 / string | 热力图（autotrack 填充） |
+| `server_id`, `level` | string / uint32 | **游戏专属维度**（区服 ID / 玩家等级） |
 | `created_at`, `updated_at` | Timestamp | 时间戳 |
 
 ---

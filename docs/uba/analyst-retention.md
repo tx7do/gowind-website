@@ -139,7 +139,7 @@ GROUP BY c.register_channel, offset_days;
 
 - **max_offset 默认 7**：要看 30 日留存需显式传 `max_offset_days=30`。
 - **时间范围要够长**：要看 N 日留存，`time_range` 结束时间至少要到「最后一批 cohort + N 天」，否则后续列会缺数据。
-- **空数据**：留存依赖回访事件已落库；当前 Kafka 消费未实现时可能查不到回访（见 [上手指南 · 数据落库现状](./analyst-getting-started.md)）。
+- **空数据**：留存依赖回访事件已落库；若查不到回访，确认 OLAP 引擎的 Kafka 消费作业是否正常运行（见 [上手指南 · 数据落库现状](./analyst-getting-started.md)）。
 
 ---
 

@@ -284,9 +284,66 @@ export default defineUserConfig({
                     text: '数据分析师指南',
                     children: [
                         '/uba/analyst-getting-started.md',
-                        '/uba/analyst-event-trend.md',
-                        '/uba/analyst-funnel.md',
-                        '/uba/analyst-retention.md',
+                        {
+                            text: '基础聚合',
+                            children: [
+                                '/uba/analyst-event-trend.md',
+                                '/uba/analyst-active-users.md',
+                                '/uba/analyst-group-by.md',
+                            ],
+                        },
+                        {
+                            text: '转化与路径',
+                            children: [
+                                '/uba/analyst-funnel.md',
+                                '/uba/analyst-retention.md',
+                                '/uba/analyst-path-sankey.md',
+                                '/uba/analyst-behavior-sequence.md',
+                            ],
+                        },
+                        {
+                            text: '用户深度',
+                            children: [
+                                '/uba/analyst-attribution.md',
+                                '/uba/analyst-distribution.md',
+                                '/uba/analyst-segmentation.md',
+                                '/uba/analyst-click.md',
+                                '/uba/analyst-interval.md',
+                            ],
+                        },
+                        {
+                            text: '生命周期',
+                            children: [
+                                '/uba/analyst-lifecycle.md',
+                                '/uba/analyst-churn.md',
+                                '/uba/analyst-new-vs-old.md',
+                                '/uba/analyst-matrix.md',
+                            ],
+                        },
+                        {
+                            text: '营收与价值',
+                            children: [
+                                '/uba/analyst-revenue.md',
+                                '/uba/analyst-whale-tier.md',
+                                '/uba/analyst-ltv.md',
+                            ],
+                        },
+                        {
+                            text: '会话与异常',
+                            children: [
+                                '/uba/analyst-session-analysis.md',
+                                '/uba/analyst-anomaly.md',
+                            ],
+                        },
+                        {
+                            text: '游戏专属',
+                            children: [
+                                '/uba/analyst-level-analysis.md',
+                                '/uba/analyst-server-retention.md',
+                                '/uba/analyst-online-stats.md',
+                                '/uba/analyst-economy.md',
+                            ],
+                        },
                         '/uba/analyst-olap-cookbook.md',
                     ],
                 },

@@ -144,7 +144,7 @@ ORDER BY day;
 
 - **时间范围默认值**：不传 `time_range` 时，后端默认取最近 7 天。
 - **粒度自动判断**：不传 `granularity` 时，跨度 >3 天用 DAY，否则用 HOUR。
-- **空数据**：若查询无结果，先确认数据是否已落库（当前 Kafka 消费未实现，见 [上手指南 · 数据落库现状](./analyst-getting-started.md)）。
+- **空数据**：若查询无结果，先确认数据是否已落库（OLAP 引擎的 Kafka 消费作业是否正常运行，见 [上手指南 · 数据落库现状](./analyst-getting-started.md)）。
 - **大时间范围**：跨度很大时建议用 DAY/WEEK/MONTH，避免按小时返回过多点。
 
 ---

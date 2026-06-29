@@ -90,7 +90,7 @@ cd backend
 - **风险监控**：`risk_events` 的风险类型/等级分布与趋势。
 - **用户画像**：`users_dim` 的地域/等级/VIP 分布。
 
-> UBA 管理后台内置了 5 个分析聚合（事件趋势/漏斗/留存/分组/活跃用户），Superset 用于更灵活的自定义 BI 与报表。两者互补。
+> UBA 管理后台内置了 25 个分析模型（覆盖通用 Web/APP 与游戏场景，详见 [产品介绍](./intro.md)），Superset 用于更灵活的自定义 BI 与报表。两者互补。
 
 ---
 
@@ -117,7 +117,7 @@ ORDER BY event_date, dau DESC;
 |------|---------|
 | 连不上 Doris | 容器内用 `doris-fe:9030` 或宿主用 `host.docker.internal:9030`；确认 FE 已就绪（`http://localhost:8030`） |
 | 驱动缺失 | `pydoris` 应已被容器初始化脚本安装；手动装：进容器 `/app/.venv/bin/pip install pydoris pymysql` |
-| 查询无数据 | UBA 当前 Kafka 消费未实现，`events_fact` 可能没数据——见 [系统架构 · Kafka 现状](./architecture.md)；可先灌测试数据 |
+| 查询无数据 | 确认 OLAP 引擎的 Kafka 消费作业是否正常（`events_fact` 是否有数据）——见 [系统架构 · Kafka 消费入库机制](./architecture.md)；可先灌测试数据 |
 | 仪表板加载慢 | 检查 Doris 分区/索引；对大表加时间过滤；调整 Superset 缓存（`CACHE_DEFAULT_TIMEOUT`） |
 
 ---

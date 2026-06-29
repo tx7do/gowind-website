@@ -126,7 +126,7 @@ Dockerfile（`backend/Dockerfile`）通过 `--build-arg SERVICE_NAME={admin|coll
 | admin 拨不通 core | etcd 是否注册成功（`docker exec etcd etcdctl get --prefix /`）；core gRPC 是否启动 |
 | Kafka 收不到数据 | collector 的 kafka 地址是否指向 `kafka:9092`（容器内）而非 `127.0.0.1` |
 | Doris 查询慢/超时 | FE/BE 是否就绪（`http://localhost:8030`）；`BE_ADDR` 是否正确 |
-| 数据查不到 | 当前 Kafka 消费未实现，数据停留在 Kafka——见 [系统架构 · Kafka 现状](./architecture.md) |
+| 数据查不到 | 确认 OLAP 引擎的 Kafka 消费作业是否正常（Doris：`SHOW ROUTINE LOAD`；ClickHouse：查 Kafka 引擎表/物化视图）；详见 [系统架构 · Kafka 消费入库机制](./architecture.md) |
 
 链路追踪用 Jaeger UI（`http://localhost:16686`）查看跨服务调用。
 

@@ -54,7 +54,7 @@ backend/
 
 | Service | 对应 proto | 职责 |
 |---------|-----------|------|
-| `AnalyticsService` | `analytics.proto` | **5 个聚合查询**：`EventTrend` / `Funnel` / `Retention` / `GroupBy` / `ActiveUsers`（按 `UseClickHouse` 分支选 Doris/ClickHouse repo） |
+| `AnalyticsService` | `analytics.proto` | **25 个分析模型**：覆盖基础聚合、转化路径、用户深度、生命周期、营收价值、会话异常、游戏专属七大场景（详见 [后端 API · 分析聚合服务](./backend-api.md)）。按 `UseClickHouse` 编译期常量分支选 Doris / ClickHouse repo |
 
 ### 风险与标签
 

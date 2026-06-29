@@ -10,16 +10,15 @@
 
 作为分析师，你在 UBA 上主要做两件事：
 
-1. **用管理后台的分析界面**：开箱即用的 5 个分析模型（事件趋势、漏斗、留存、维度分组、活跃用户）+ 会话/路径/画像查询。
+1. **用管理后台的分析界面**：开箱即用的 25 个分析模型（事件趋势、漏斗、留存、归因、分布、热力、生命周期、营收、LTV、关卡、滚服留存、经济系统……）+ 会话/路径/画像查询与实时大屏。
 2. **用 Superset / 直连 OLAP 写 SQL**：做更灵活的自定义分析、报表、仪表板。
 
 ```mermaid
 graph LR
     A["客户端 SDK 上报"] --> B["Collector<br/>5700"]
     B --> C["Kafka"]
-    C --> D["Core 入库"]
-    D --> E[("OLAP: Doris / ClickHouse<br/>gw_uba 库")]
-    E --> F["管理后台分析界面<br/>5 个聚合模型"]
+    C --> E[("OLAP: Doris / ClickHouse<br/>gw_uba 库<br/>Routine Load / Kafka 引擎表消费")]
+    E --> F["管理后台分析界面<br/>25 个分析模型"]
     E --> G["Superset / SQL Lab"]
     H["你（分析师）"] --> F
     H --> G
@@ -52,7 +51,7 @@ UBA 的分析数据存在 OLAP 引擎的 `gw_uba` 库（默认 Doris）。核心
 
 | 表 | 内容 | 关键字段 |
 |----|------|---------|
-| **`events_fact`** | 行为事件明细（核心） | `event_id`、`user_id`、`device_id`、`event_name`、`event_category`、`event_time/event_ts`、`platform`、`channel`、`country`、`amount`、`properties`(map)、`metrics`(map) |
+| **`events_fact`** | 行为事件明细（核心） | `event_id`、`user_id`、`device_id`、`event_name`、`event_category`、`event_time/event_ts`、`platform`、`channel`、`country`、`amount`、`properties`(map)、`metrics`(map)、**`server_id`/`level`（游戏专属）** |
 | **`sessions_fact`** | 会话级汇总 | `session_id`、`user_id`、`start_time/end_time`、`duration_ms`、`event_count`、`is_bounce`、`entry_page/exit_page`、`total_amount` |
 | **`risk_events`** | 风险事件 | `risk_type`、`risk_level`、`risk_score`、`rule_id/rule_name`、`status`、`occur_time` |
 | **`path_features`** | 用户路径特征 | `first_event/last_event`、`first_3_events/last_3_events`(数组)、`is_converted`、`conversion_event` |
@@ -72,25 +71,45 @@ UBA 的分析数据存在 OLAP 引擎的 `gw_uba` 库（默认 Doris）。核心
 - `properties` / `context` 是 `map<string,string>`，`metrics` 是 `map<string,double>`——业务自定义属性都放这里。
 - 时间字段：`event_time`（Timestamp）、`event_ts`（毫秒 int64）、`event_date`（日期，分区键）。
 
-> 完整字段定义见 [后端 API 契约 · BehaviorEvent](./backend-api.md) 与 `backend/sql/{doris,clickhouse}/1_base_tables.sql`。
+> 完整字段定义见 [后端 API 契约 · BehaviorEvent](./backend-api.md) 与 `sql/{doris,clickhouse}/1_base_tables.sql`。
 
 ---
 
-## 四、开箱即用的 5 个分析模型
+## 四、开箱即用的 25 个分析模型
 
-管理后台「数据分析」菜单下有 5 个对应后端 `AnalyticsService` 的聚合分析：
+管理后台「数据分析」菜单下有 25 个对应后端 `AnalyticsService` 的分析模型，按场景分组：
 
-| 模型 | 后端接口 | 回答什么问题 |
-|------|---------|------------|
-| **事件趋势** | `EventTrend` | 最近一段时间某事件的量级与趋势？ |
-| **漏斗分析** | `Funnel` | 用户从步骤 A 到 B 的转化与流失？ |
-| **留存分析** | `Retention` | 新用户在第 N 天的留存率？ |
-| **维度分组** | `GroupBy` | 按渠道/平台/版本分组的指标对比？ |
-| **活跃用户** | `ActiveUsers` | DAU / WAU / MAU？ |
+| 场景 | 模型 | 回答什么问题 |
+|------|------|------------|
+| **基础聚合** | 事件趋势 `EventTrend` | 某事件量级与趋势？ |
+| | 维度分组 `GroupBy` | 按渠道/平台/版本分组的指标对比？ |
+| | 活跃用户 `ActiveUsers` | DAU / WAU / MAU？ |
+| **转化与路径** | 漏斗 `Funnel` | 从步骤 A 到 B 的转化与流失？ |
+| | 留存 `Retention` | 新用户在第 N 天的留存率？ |
+| | 转化路径 `PathSankey` | 用户的主流转化路径？ |
+| | 行为序列 `BehaviorSequence` | 用户的行为先后顺序？ |
+| **用户深度** | 归因 `Attribution` | 哪个渠道带来了转化（首触/末触）？ |
+| | 分布 `Distribution` | 指标的分布与分位？ |
+| | 用户分群 `Segmentation` | 圈选特定行为特征的用户群？ |
+| | 点击热力 `Click` | 页面哪里被点得最多？ |
+| | 间隔时间 `Interval` | 两个行为之间的时间间隔？ |
+| **生命周期** | 生命周期 `Lifecycle` | 用户处于生命周期的哪个阶段？ |
+| | 流失回流 `Churn` | 谁流失了、谁回流了？ |
+| | 新老对比 `NewVsOld` | 新老用户行为差异？ |
+| | 矩阵象限 `Matrix` | 用户/行为在象限中的分布？ |
+| **营收与价值** | 营收 `Revenue` | ARPU / ARPPU / GMV？ |
+| | 付费分层 `WhaleTier` | 鲸鱼/海豚/小鱼用户分布？ |
+| | 历史 LTV `LTV` | 用户生命周期价值？ |
+| **会话与异常** | 会话分析 `SessionAnalysis` | 跳出率/会话深度？ |
+| | 异常检测 `Anomaly` | 同比环比异常波动？ |
+| **游戏专属** | 关卡分析 `LevelAnalysis` | 关卡通过率/数值平衡？ |
+| | 滚服留存 `ServerRetention` | 按区服的留存？ |
+| | 同时在线 `OnlineStats` | PCU / ACU？ |
+| | 经济系统 `Economy` | 代币/道具产出消耗流向？ |
 
-另有**会话、事件路径、用户行为画像**三个事实表查询界面（基于已落库的事实记录）。
+另有**会话、事件路径、用户行为画像**三个事实表查询界面，以及**实时大屏**（基于已落库的事实记录）。
 
-> 各模型详解：[事件趋势](./analyst-event-trend.md)、[漏斗](./analyst-funnel.md)、[留存](./analyst-retention.md)、[OLAP 查询手册](./analyst-olap-cookbook.md)。
+> 各模型详解：[事件趋势](./analyst-event-trend.md)、[漏斗](./analyst-funnel.md)、[留存](./analyst-retention.md)、[OLAP 查询手册](./analyst-olap-cookbook.md)。完整 RPC 与字段定义见 [后端 API](./backend-api.md)。
 
 ---
 
@@ -98,7 +117,7 @@ UBA 的分析数据存在 OLAP 引擎的 `gw_uba` 库（默认 Doris）。核心
 
 | 场景 | 用管理后台 | 用 Superset |
 |------|:---------:|:----------:|
-| 查 5 个标准模型 | ✅ | — |
+| 查 25 个标准模型 | ✅ | — |
 | 自定义 SQL / 多表关联 | — | ✅ |
 | 拖拽建仪表板、定时报表 | — | ✅ |
 | 风险/标签配置管理 | ✅ | — |
@@ -108,19 +127,16 @@ UBA 的分析数据存在 OLAP 引擎的 `gw_uba` 库（默认 Doris）。核心
 
 ---
 
-## 六、⚠️ 重要：当前的数据落库现状
+## 六、数据落库现状
 
-> **务必知晓**：截至当前版本，Collector 已正确把上报数据写入 Kafka，但 **Core 内的 Kafka 消费入库逻辑尚未实现**。这意味着：
+> **上报数据会自动落库**：Collector 把数据写入 Kafka 后，由 OLAP 引擎的虚拟表直接消费——ClickHouse 用 Kafka 引擎表 + 物化视图、Doris 用 Routine Load——持续写入 `events_fact` 等事实表。正常情况下秒级可见，分析界面和 Superset 都能查到新数据。
 >
-> - 上报数据当前会**停留在 Kafka**，不会自动进入 `events_fact`。
-> - 你在分析界面或 Superset 里**可能查不到新数据**。
->
-> 在研发补齐消费链路前，你可以：
-> 1. 与研发确认是否已临时改为同步写入（直接调 `BatchCreate`）；
-> 2. 用 `sql/{doris,clickhouse}/demo-data.sql` 灌入演示数据练习；
-> 3. 直接往 OLAP 手工 INSERT 测试数据。
+> **如果查不到新数据**，按以下顺序排查：
+> 1. 确认 OLAP 引擎的 Kafka 消费作业在正常运行（Doris：`SHOW ROUTINE LOAD` 查看作业状态；ClickHouse：查 Kafka 引擎表与物化视图）；
+> 2. 确认 collector 的 Kafka 地址配置正确（容器内应为 `kafka:9092`）；
+> 3. 若消费作业尚未在当前环境建立，可先执行对应引擎的建表脚本（Doris：`sql/doris/02_kafka_tables.sql`；ClickHouse：`sql/clickhouse/02_kafka_tables.sql`），或用 `sql/{doris,clickhouse}/demo-data.sql` 灌入演示数据练习。
 
-详见 [系统架构 · Kafka 消费现状](./architecture.md)。
+详见 [系统架构 · Kafka 消费入库机制](./architecture.md)。
 
 ---
 

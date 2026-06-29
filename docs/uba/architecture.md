@@ -24,9 +24,9 @@ graph TB
     end
 
     subgraph 计算与存储
-        Core["Core Service<br/>gRPC（动态端口，etcd 发现）<br/>入库 · 建模 · 查询 · 风险 · 标签"]
+        Core["Core Service<br/>gRPC（动态端口，etcd 发现）<br/>建模 · 查询 · 风险 · 标签<br/>（预留微服务消费接口）"]
         PG[("PostgreSQL<br/>业务 / 配置实体")]
-        OLAP[("OLAP<br/>Doris 默认 / ClickHouse")]
+        OLAP[("OLAP<br/>Doris 默认 / ClickHouse<br/>虚拟表 / Routine Load 消费 Kafka")]
     end
 
     subgraph 应用层
@@ -42,7 +42,7 @@ graph TB
     WebSDK -->|"POST /uba/v1/report"| Collector
     CSSDK -->|"POST /uba/v1/report"| Collector
     Collector -->|"Publish"| Kafka
-    Kafka -.->|"消费入库（待实现）"| Core
+    Kafka -->|"虚拟表 / Routine Load 消费"| OLAP
     Core --> PG
     Core --> OLAP
     Frontend -->|"HTTP / SSE"| Admin
@@ -75,7 +75,7 @@ graph TB
 |----|------|
 | 目录 | `backend/app/core/service/` |
 | 服务监听端口 | gRPC **动态端口**（`0.0.0.0:0`，启动时注册到 etcd，不固定） |
-| 职责 | 事件入库、分析建模、风险检测、标签管理、用户画像、数据同步 |
+| 职责 | 分析建模、风险检测、标签管理、用户画像、数据同步（**默认不经手事件入库**，事件由 OLAP 引擎虚拟表直接消费 Kafka 落库；Core 侧预留了 broker subscriber 入口，供后续按需启用微服务消费） |
 | 数据源 | PostgreSQL（业务实体，走 Ent ORM）+ OLAP 引擎（分析数据） |
 | 对外协议 | gRPC（供 admin/collector 调用） |
 | 特点 | 承载所有「重」业务逻辑；通过编译期常量 `data.UseClickHouse` 在 ClickHouse / Doris 间二选一 |
@@ -107,22 +107,19 @@ SDK 上报
         └─ 4. Publish → Kafka topic
               ├─ uba_events_raw   （行为事件）
               └─ uba_risk_events  （风险事件）
+                    └─> 由 OLAP 引擎的虚拟表 / Routine Load 直接消费，落入 events_fact / risk_events 等事实表
 ```
 
-### ⚠️ Kafka 消费端现状（重要，请务必阅读）
+### Kafka 消费入库机制（重要）
 
-> **诚实披露**：截至当前版本，`uba_events_raw` / `uba_risk_events` 的 **Kafka 消费入库逻辑尚未在 Core 服务内实现**。
+> **默认消费方式 = OLAP 引擎原生消费 Kafka**，无需在 Core 服务内编写消费者：
 >
-> - Collector 已正确 `Publish` 到 Kafka；
-> - Core 提供了 `BehaviorEventService.BatchCreate` 等入库入口（能力具备）；
-> - 但 **连接两者的消费者（subscriber）在 Core 代码中缺失**。
+> - **ClickHouse**：使用 **Kafka 引擎虚拟表** 消费 `uba_events_raw`，再通过物化视图写入 `events_fact` 等存储表，建表脚本见 `sql/clickhouse/02_kafka_tables.sql`；
+> - **Doris**：使用 **Routine Load** 作业从 Kafka 持续拉取并写入事实表，建表脚本见 `sql/doris/02_kafka_tables.sql`。
 >
-> **这意味着上报数据目前会停留在 Kafka，不会自动落库**。生产化前需二选一补齐：
-> 1. **在 Core 内实现 broker subscriber**（订阅 `uba_events_raw` → 调 `BatchCreate` 入 OLAP），参考 kratos broker 用法；或
-> 2. **引入独立消费者**（如 Flink job / 独立 worker）消费 Kafka 落库。
+> 因此 Collector `Publish` 到 Kafka 之后，**数据会由 OLAP 引擎自身持续拉取并落库**，Core 服务默认不参与这条写入路径。
 >
-> 在补齐前，可临时让 Collector 改为直接 gRPC 调 Core 的 `BatchCreate`（同步写入）做联调。
-> 另外，Doris 部署提供了 `sql/doris/02_kafka_tables.sql` 的 **Routine Load** 作业定义（参考用，需与消费方案统一规划）。
+> **Core 侧预留了微服务消费接口**（broker subscriber，可调 `BehaviorEventService.BatchCreate` 入库）。在 OLAP 虚拟表吞吐/转换能力不够用时，可作为补充方案按需启用，参考 kratos broker 用法。两种方式二选一即可，不要同时启用以免重复入库。
 
 ### 查询链路（读）
 
@@ -143,7 +140,7 @@ Admin 前端
 | **PostgreSQL** | 业务/配置实体（应用、用户、角色、权限、字典、菜单、事件 Schema、风险规则、标签定义等） | Ent ORM，表结构由 schema 注解生成（无手写 schema.sql） |
 | **OLAP（Doris 默认 / ClickHouse）** | 分析数据（`events_fact` / `sessions_fact` / `risk_events` / `users_dim` 等事实表） | 原生 SQL + repo 封装 |
 | **Redis** | 缓存、异步任务队列（Asynq） | kratos cache + asynq |
-| **Kafka** | 事件流缓冲（collector → core 的解耦管道） | kratos broker |
+| **Kafka** | 事件流缓冲（collector → OLAP 引擎的解耦管道；由 OLAP 虚拟表 / Routine Load 消费） | kratos broker |
 | **MinIO** | 对象存储（文件上传） | S3 兼容 |
 
 ### OLAP 双引擎设计

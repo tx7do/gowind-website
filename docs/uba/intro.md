@@ -15,41 +15,56 @@ UBA（User Behavior Analysis）是一种用于收集、分析和报告用户在�
 GoWind UBA 的核心数据链路是一条经典的流式数仓管道：
 
 ```
-客户端 SDK  →  Collector（采集）  →  Kafka（缓冲）  →  Core（入库/建模/查询）  →  OLAP 引擎（Doris / ClickHouse）
-                                          ↑
-                Admin 后台  →  Admin Service（BFF）  →  Core（gRPC）  →  PostgreSQL（业务实体）
+客户端 SDK  →  Collector（采集）  →  Kafka（缓冲）  →  OLAP 引擎（Doris / ClickHouse，Routine Load / Kafka 引擎表消费落库）
+
+                Admin 后台  →  Admin Service（BFF）  →  Core（gRPC：建模/查询）  →  OLAP 引擎 + PostgreSQL（业务实体）
 ```
+
+> 写入路径上 **Core 默认不经手事件入库**——Collector 把事件发到 Kafka 后，由 OLAP 引擎自身的消费机制（Doris Routine Load / ClickHouse Kafka 引擎表）直接落库。Core 负责的是读侧的建模与查询。详见 [系统架构](./architecture.md)。
 
 ---
 
 ## 二、真实能力清单
 
-> ⚠️ **请务必阅读**：UBA 是一个持续演进的项目。下列能力按**代码中真实实现的状态**划分，文档不再沿用宣传材料中的「十大分析模型」表述。规划中的能力会明确标注。
+> ⚠️ **请务必阅读**：UBA 是一个持续演进的项目。下列能力按**代码中真实实现的状态**划分。
 
 ### 已实现（代码可验证）
 
 | 能力域 | 内容 |
 |--------|------|
-| **数据采集** | 自研 Web SDK（TypeScript）+ C# SDK（Unity/Godot/.NET），批量上报 + 重试降级 + 卸载兜底 |
+| **数据采集** | 自研 Web SDK（TypeScript）+ C# SDK（Unity/Godot/.NET），批量上报 + 重试降级 + 卸载兜底；游戏专属维度 `serverId`/`level` |
 | **统一上报** | `POST /uba/v1/report`，appId + appSecret 应用级鉴权，混合上报行为/风险事件 |
 | **三服务架构** | Collector（采集 BFF）+ Core（核心业务）+ Admin（管理后台 BFF），基于 etcd 服务发现 |
-| **双 OLAP 引擎** | Apache Doris 与 ClickHouse 二选一，共用同一份业务模型，编译期常量切换 |
-| **分析聚合（5 种）** | 事件趋势 `EventTrend`、漏斗 `Funnel`、留存 `Retention`、维度分组 `GroupBy`、活跃用户 `ActiveUsers`（DAU/WAU/MAU） |
+| **双 OLAP 引擎** | Apache Doris 与 ClickHouse 二选一，共用同一份业务模型，编译期常量 `UseClickHouse` 切换 |
+| **分析聚合（25 种）** | 覆盖通用 Web/APP 与游戏全场景的分析模型矩阵（见下表），前后端均已贯通 |
 | **事实表读取** | 会话 `Session`、用户路径 `EventPath`、用户行为画像 `UserBehaviorProfile` 的 CRUD 查询 |
 | **风险与标签** | 风险事件 `RiskEvent`、风险规则 `RiskRule`、标签定义 `TagDefinition`、用户标签 `UserTag`、ID 映射 `IdMapping` |
 | **组织与权限** | 多租户、用户/角色/权限/菜单、Casbin/OPA 策略引擎、字典体系、组织/岗位 |
 | **系统运维** | 文件存储（MinIO）、缓存管理、站内消息、登录/操作/API/权限审计、定时任务（Asynq）、SSE 实时推送 |
-| **前端管理后台** | 12 个功能模块、基于 Connect-RPC 生成的类型安全 API 层、TanStack Vue Query 数据层 |
+| **前端管理后台** | 基于 Connect-RPC 生成的类型安全 API 层、TanStack Vue Query 数据层，内嵌 25 个分析模型视图 + 实时大屏 |
 | **BI 对接** | Apache Superset 容器直连 Doris，基于事实表构建仪表板 |
+
+#### 25 个分析模型矩阵
+
+`AnalyticsService` 共 25 个 RPC，按场景分组（全部已实现，对应 `analytics.proto` 第 11-83 行）：
+
+| 场景 | 模型（RPC） |
+|------|------------|
+| **基础聚合** | 事件趋势 `EventTrend`、维度分组 `GroupBy`、活跃用户 `ActiveUsers`（DAU/WAU/MAU 滚动窗口真值） |
+| **转化与路径** | 漏斗 `Funnel`、留存 `Retention`、转化路径 `PathSankey`、行为序列 `BehaviorSequence` |
+| **用户深度** | 归因 `Attribution`、分布 `Distribution`、用户分群 `Segmentation`、点击热力 `Click`、间隔时间 `Interval` |
+| **生命周期** | 生命周期 `Lifecycle`、流失与回流 `Churn`、新老对比 `NewVsOld`、矩阵象限 `Matrix` |
+| **营收与价值** | 营收 `Revenue`（ARPU/ARPPU/GMV）、付费分层 `WhaleTier`、历史 LTV `LTV` |
+| **会话与异常** | 会话分析 `SessionAnalysis`（跳出率/深度）、同比环比异常 `Anomaly` |
+| **游戏专属** | 关卡分析 `LevelAnalysis`、滚服留存 `ServerRetention`、同时在线 `OnlineStats`（PCU/ACU）、经济系统 `Economy` |
 
 ### 规划中 / 已知缺口（详见 [附录 · 已知限制与路线图](./appendix.md)）
 
 | 项 | 现状 |
 |----|------|
-| Kafka 消费入库 | Collector 已正确写入 Kafka，但 Core 内的 **消费者尚未实现**，上报数据当前停留在 Kafka。生产化前需补齐。 |
-| WAU / MAU | `ActiveUsers` 接口的 `wau`/`mau` 字段当前回填为 DAU 值（占位）。 |
+| Kafka 消费入库 | 默认由 **OLAP 引擎虚拟表消费**（ClickHouse Kafka 引擎表 / Doris Routine Load），数据可正常落库；Core 侧另预留微服务消费接口，吞吐不够时可启用。详见 [系统架构 · Kafka 消费入库机制](./architecture.md)。 |
+| WAU / MAU 小时粒度 | `ActiveUsers` 的日级 WAU/MAU 已基于 HLL 滚动窗口输出真值；仅 HOUR 粒度因无小时级状态，退化为等于 DAU。 |
 | 风险检测引擎 | 风险规则与风险事件的**存取**已实现，但「事件匹配规则并自动评分」的检测引擎尚未落地。 |
-| 更多分析模型 | 归因、分布、点击热力等分析模型属于产品愿景，当前仅有上述 5 个聚合已实现。 |
 | 移动端原生 SDK | 当前无 iOS/Android 原生 SDK，仅有 Web 与 C#（游戏）两条线。 |
 
 ---
@@ -72,9 +87,9 @@ graph TB
     end
 
     subgraph 计算与存储
-        Core["Core Service<br/>gRPC 动态端口（etcd 发现）<br/>入库 · 建模 · 查询"]
+        Core["Core Service<br/>gRPC 动态端口（etcd 发现）<br/>建模 · 查询<br/>（预留微服务消费接口）"]
         PG[("PostgreSQL<br/>业务 / 配置实体（Ent ORM）")]
-        OLAP[("OLAP 引擎<br/>Doris（默认）或 ClickHouse")]
+        OLAP[("OLAP 引擎<br/>Doris（默认）或 ClickHouse<br/>虚拟表 / Routine Load 消费 Kafka")]
     end
 
     subgraph 应用层
@@ -92,7 +107,7 @@ graph TB
     WebSDK -->|"POST /uba/v1/report"| Collector
     CSSDK -->|"POST /uba/v1/report"| Collector
     Collector -->|"Publish"| Kafka
-    Kafka -.->|"消费入库（待实现）"| Core
+    Kafka -->|"虚拟表 / Routine Load 消费"| OLAP
     Core --> PG
     Core --> OLAP
     Frontend -->|"HTTP / SSE"| Admin

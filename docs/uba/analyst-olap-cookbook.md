@@ -8,7 +8,7 @@
 
 - 默认引擎 **Apache Doris**（`UseClickHouse = false`），可切 **ClickHouse**（见 [配置详解](./deploy-config.md)）。
 - 分析数据在 `gw_uba` 库。核心表：`events_fact`、`sessions_fact`、`risk_events`、`path_features`、`users_dim`、`objects_dim`、`id_mapping`、`user_tags`。
-- 字段定义见 `backend/sql/{doris,clickhouse}/1_base_tables.sql` 与 [上手指南 · 表与字段地图](./analyst-getting-started.md)。
+- 字段定义见 `sql/{doris,clickhouse}/1_base_tables.sql` 与 [上手指南 · 表与字段地图](./analyst-getting-started.md)。
 
 ---
 
@@ -99,7 +99,7 @@ GROUP BY day
 ORDER BY day;
 ```
 
-> ⚠️ **当前限制**：后端 `ActiveUsers` 的 `wau`/`mau` 当前回填为 `dau` 值（占位），滚动窗口尚未实现。要算真正的 WAU/MAU，需自行写 SQL：
+> 💡 **自行计算 WAU/MAU**：后端 `ActiveUsers` 的**日级** wau/mau 已基于 HLL 滚动窗口输出真值；仅 HOUR 粒度因无小时级状态退化为等于 DAU。如果你想在 Superset 里按自定义口径（如非整 7/30 天窗口）自己算，可参考：
 
 ```sql
 -- 近 7 天活跃（WAU，滚动窗口）

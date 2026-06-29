@@ -52,13 +52,12 @@
 
 ### 已知缺口
 
+> 说明：**Kafka 消费入库已是默认能力，不属于缺口**。默认由 OLAP 引擎虚拟表消费 Kafka（ClickHouse Kafka 引擎表 / Doris Routine Load）落库；Core 侧另预留微服务消费接口，吞吐不够时可启用。详见 [系统架构 · Kafka 消费入库机制](./architecture.md)。
+
 | 项 | 现状 | 影响 | 规划方向 |
 |----|------|------|---------|
-| **Kafka 消费入库** | Collector 已写 Kafka，但 Core 内消费者未实现 | 上报数据停留在 Kafka，不自动落库 | 在 Core 实现 broker subscriber，或引入独立消费者（Flink/worker） |
-| **WAU / MAU** | `ActiveUsers` 的 wau/mau 回填为 dau 占位 | 活跃用户只有 DAU 准确 | 实现滚动 7/30 天窗口计算 |
-| **风险检测引擎** | 仅实现风险事件/规则的存取（CRUD） | 无「事件匹配规则并自动评分」 | 落地规则评估引擎，对接风险事件生成 |
-| **RiskEventService.Get** | 返回 nil（未实现） | 单条风险事件查询不可用 | 实现按主键查询 |
-| **更多分析模型** | 仅 5 个聚合（趋势/漏斗/留存/分组/活跃） | 归因、分布、点击热力等未实现 | 按需求逐步补齐 |
+| **WAU / MAU 小时粒度** | 日级 wau/mau 已基于 HLL 滚动窗口输出真值；仅 HOUR 粒度因无小时级状态退化为等于 DAU | 小时粒度的周/月活不准确 | 预聚合小时级 uv 状态 |
+| **风险检测引擎** | 仅实现风险事件/规则的存取（CRUD，`RiskEventService.Get` 等查询已可用） | 无「事件匹配规则并自动评分」 | 落地规则评估引擎，对接风险事件生成 |
 
 ### 数据库一致性提醒
 
@@ -82,7 +81,7 @@
 A：基于 Doris / ClickHouse 列式引擎，设计上可处理亿级事件。实际吞吐取决于引擎规格与 Kafka 集群。
 
 ### Q2：上报后多久能查到数据？
-A：设计上是秒级（Kafka 实时入库）。但**当前 Kafka 消费未实现**，数据停留在 Kafka，需补齐消费链路后才能查询。
+A：秒级。Collector 写入 Kafka 后，由 OLAP 引擎的虚拟表（ClickHouse Kafka 引擎表）/ Routine Load（Doris）持续消费落库，正常情况下几秒内即可在 `events_fact` 查到。若长时间查不到，先排查 OLAP 引擎的消费作业（Routine Load 状态 / 物化视图）是否正常运行。
 
 ### Q3：如何切换 ClickHouse / Doris？
 A：修改 `app/core/service/internal/data/data.go` 的 `UseClickHouse` 常量并重新编译 Core（不是运行时配置）。

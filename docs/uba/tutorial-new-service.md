@@ -141,7 +141,7 @@ curl -X POST http://localhost:5600/admin/v1/xxx \
 
 | 参照对象 | 文件 |
 |---------|------|
-| 领域 proto（5 聚合） | `api/protos/uba/service/v1/analytics.proto` |
+| 领域 proto（25 个分析模型） | `api/protos/uba/service/v1/analytics.proto` |
 | admin 网关 proto | `api/protos/admin/service/v1/i_analytics.proto` |
 | core service（按引擎分支） | `app/core/service/internal/service/analytics_service.go` |
 | core OLAP repo（双引擎） | `app/core/service/internal/data/{doris,clickhouse}/analytics_repo.go` |

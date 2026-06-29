@@ -52,7 +52,7 @@ frontend/admin/
 
 | 模块 | 子模块 | 说明 |
 |------|--------|------|
-| `data-analysis/` | event-trend / funnel / retention / dimension-compare / behavior-timeline / realtime-screen / session / event-path / profile | **分析仪表板套件**（核心分析界面） |
+| `data-analysis/` | event-trend / funnel / retention / attribution / distribution / behavior-sequence / behavior-timeline / segmentation / click / interval / lifecycle / churn / new-vs-old / matrix / revenue / whale-tier / ltv / session-analysis / anomaly / path-sankey / level-analysis / server-retention / online-stats / economy / dimension-compare / realtime-screen / session / event-path / profile | **分析仪表板套件**：对应后端 `AnalyticsService` 的 **25 个分析模型** + 实时大屏 + 会话/路径/画像事实表查询 |
 | `risk/` | event / rule / webhook | 风控（风险事件、风险规则、Webhook） |
 | `tag/` | tags / user-tags / ids | 标签系统（标签定义、用户标签、ID 映射） |
 | `application/` | application | UBA 应用管理（appId/appSecret） |
@@ -64,7 +64,7 @@ frontend/admin/
 | `log/` | api / data-access / login / operation / permission 审计日志 | 5 类审计日志 |
 | `internal_message/` | category / message | 站内消息 |
 
-> `data-analysis` 是分析师的主要工作界面，对应后端 `AnalyticsService` 的 5 个聚合 + 会话/路径/画像事实表查询。
+> `data-analysis` 是分析师的主要工作界面，对应后端 `AnalyticsService` 的 **25 个分析模型**（按场景分组，详见 [产品介绍 · 25 个分析模型矩阵](./intro.md)）+ 实时大屏 + 会话/路径/画像事实表查询。
 
 ---
 

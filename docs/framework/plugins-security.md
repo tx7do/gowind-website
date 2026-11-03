@@ -1,38 +1,73 @@
 # 安全与认证插件
 
-go-wind-plugins 提供认证、授权和安全相关的适配器，支持 JWT、OAuth2、Casbin 等。
+go-wind-plugins 提供认证（authn）、授权（authz）与加解密（crypto）三大块安全能力，认证引擎覆盖 JWT、OAuth2、OIDC 等 10 种，授权引擎覆盖 Casbin、Cedar、Cerbos、OPA、Zanzibar 等 9 种，共 20 个模块。
 
-## 一、认证适配器
+## 一、插件总览
 
-### 1.1 JWT
+### 认证引擎（`security/authn/` 下）
+
+| 插件 | 导入路径 | 引擎/说明 |
+|------|---------|------|
+| JWT | `plugins/security/authn/jwt` | golang-jwt/jwt |
+| OAuth2 | `plugins/security/authn/oauth2` | OAuth2 客户端凭据（Token 自省） |
+| OIDC | `plugins/security/authn/oidc` | OpenID Connect（外部 IdP 委托认证） |
+| API Key | `plugins/security/authn/apikey` | API Key 比对 |
+| HTTP Basic | `plugins/security/authn/basicauth` | HTTP Basic 认证 |
+| HMAC | `plugins/security/authn/hmac` | HMAC 签名校验（时间戳+密钥防重放） |
+| mTLS | `plugins/security/authn/mtls` | 双向 TLS 客户端证书 |
+| 预共享密钥 | `plugins/security/authn/presharedkey` | 静态预共享密钥比对 |
+| 会话 | `plugins/security/authn/session` | 服务端会话（cookie/session store） |
+| Noop | `plugins/security/authn/noop` | 空实现（开发/测试默认引擎） |
+
+### 授权引擎（`security/authz/` 下）
+
+| 插件 | 导入路径 | 引擎/说明 |
+|------|---------|------|
+| Casbin | `plugins/security/authz/casbin` | casbin/casbin |
+| Cedar | `plugins/security/authz/cedar` | Cedar 策略引擎 |
+| Cerbos | `plugins/security/authz/cerbos` | Cerbos 策略引擎 |
+| OPA | `plugins/security/authz/opa` | Open Policy Agent（Rego） |
+| Zanzibar | `plugins/security/authz/zanzibar` | ReBAC 关系元组（keto / openfga 对接） |
+| ACL | `plugins/security/authz/acl` | 静态 ACL |
+| RBAC | `plugins/security/authz/rbac` | 基于角色的访问控制 |
+| AWS IAM | `plugins/security/authz/awsiam` | AWS IAM 策略委托判定 |
+| Noop | `plugins/security/authz/noop` | 空实现（开发/测试默认引擎） |
+
+### 加密模块
+
+| 插件 | 导入路径 | 说明 |
+|------|---------|------|
+| Crypto | `plugins/security/crypto` | 加解密/哈希/签名统一注册表（AES、RSA、SM2/SM3/SM4、HMAC、ECDSA、ECDH） |
+
+## 二、认证适配器
+
+### 2.1 JWT
 
 ```go
-import jwtPlugin "github.com/tx7do/go-wind-plugins/auth/jwt"
+import jwtPlugin "github.com/tx7do/go-wind-plugins/security/authn/jwt"
 
-authenticator := jwtPlugin.New(
+authenticator, _ := jwtPlugin.NewAuthenticator(
     jwtPlugin.WithSigningMethod("HS256"),
     jwtPlugin.WithKey("my-secret-key"),
-    jwtPlugin.WithExpiry(24*time.Hour),
-    jwtPlugin.WithIssuer("my-service"),
 )
 ```
 
 #### 签发 Token
 
 ```go
-claims := map[string]interface{}{
+claims := engine.AuthClaims{
     "user_id":  "123",
     "username": "alice",
     "roles":    []string{"admin"},
 }
 
-token, _ := authenticator.Generate(claims)
+token, _ := authenticator.CreateIdentity(claims)
 ```
 
 #### 验证 Token
 
 ```go
-claims, err := authenticator.Verify(tokenString)
+claims, err := authenticator.AuthenticateToken(tokenString)
 if err != nil {
     // 无效或过期的 token
 }
@@ -47,44 +82,32 @@ auth:
     key: ${JWT_SECRET}
     public_key_file: certs/public.pem   # RS256/ES256
     private_key_file: certs/private.pem
-    expiry: 24h
-    refresh_expiry: 168h         # 7 days
-    issuer: my-service
 ```
 
-### 1.2 OAuth2
+### 2.2 OAuth2
 
 ```go
-import oauth2Plugin "github.com/tx7do/go-wind-plugins/auth/oauth2"
+import oauth2Plugin "github.com/tx7do/go-wind-plugins/security/authn/oauth2"
 
-oauth2Server := oauth2Plugin.New(
-    oauth2Plugin.WithClientStore(clientStore),
-    oauth2Plugin.WithTokenStore(tokenStore),
-    oauth2Plugin.WithAccessExp(3600),     // 1 hour
-    oauth2Plugin.WithRefreshExp(604800),  // 7 days
+oauth2Authenticator, _ := oauth2Plugin.NewAuthenticator(
+    oauth2Plugin.WithClientCredentials(clientID, clientSecret),
+    oauth2Plugin.WithIntrospectURL("https://idp.example.com/oauth2/introspect"),
 )
 ```
 
-#### 支持的 Grant Type
+通过 Token 自省（RFC 7662）对接外部 OAuth2/OIDC 授权服务器，`AuthenticateToken` 返回自省结果映射出的标准 Claims；`WithExtraClaimsKeys` 可透传额外 Claim 字段。
 
-| Grant Type | 说明 |
-|-----------|------|
-| `authorization_code` | 授权码模式 |
-| `client_credentials` | 客户端凭证 |
-| `password` | 密码模式 |
-| `refresh_token` | 刷新令牌 |
+## 三、授权适配器
 
-## 二、授权适配器
-
-### 2.1 Casbin RBAC
+### 3.1 Casbin RBAC
 
 ```go
-import casbinPlugin "github.com/tx7do/go-wind-plugins/auth/casbin"
+import casbinPlugin "github.com/tx7do/go-wind-plugins/security/authz/casbin"
 
-enforcer, _ := casbinPlugin.New(
-    casbinPlugin.WithModelFile("rbac_model.conf"),
+enforcer, _ := casbinPlugin.NewEngine(
+    context.Background(),
+    casbinPlugin.WithFileModel("rbac_model.conf"),
     casbinPlugin.WithPolicyAdapter(policyAdapter),
-    casbinPlugin.WithAutoSave(true),
 )
 ```
 
@@ -112,70 +135,51 @@ m = g(r.sub, p.sub) && keyMatch2(r.obj, p.obj) && r.act == p.act
 
 ```go
 // 检查用户是否有权限
-allowed, _ := enforcer.Enforce("alice", "/api/users/:id", "GET")
+allowed, _ := enforcer.IsAuthorized(ctx, subject, action, resource, project)
 
-// 添加角色
-enforcer.AddRoleForUser("alice", "admin")
-
-// 添加策略
-enforcer.AddPolicy("admin", "/api/users/*", "GET")
-enforcer.AddPolicy("admin", "/api/users/*", "POST")
+// 策略加载后统一注入
+enforcer.SetPolicies(ctx, policyMap, roleMap)
 ```
 
-#### YAML 配置
+除 Casbin 外，授权侧还提供 Cedar / Cerbos / OPA（Rego）/ Zanzibar（ReBAC，对接 keto、openfga）等引擎，以及内置的 ACL、RBAC 实现；所有引擎实现同一 `authz.Engine` 接口，可通过工厂按类型创建（`engine.NewEngine(ctx, typ, opts...)`）。
 
-```yaml
-auth:
-  casbin:
-    model_file: configs/rbac_model.conf
-    policy:
-      driver: mysql          # file | mysql | postgres | redis
-      dsn: "user:pass@tcp(localhost:3306)/casbin"
-    auto_save: true
-    auto_build: true
-```
-
-### 2.2 中间件集成
+### 3.2 中间件集成
 
 ```go
 // JWT 认证中间件
-authMiddleware := jwtPlugin.Middleware(
-    jwtPlugin.WithSkipper(func(r *http.Request) bool {
+authMiddleware := authnMiddleware.Middleware(authenticator,
+    authnMiddleware.WithSkipFunc(func(r *http.Request) bool {
         return r.URL.Path == "/login" || r.URL.Path == "/register"
     }),
 )
 
-// Casbin 授权中间件
-authzMiddleware := casbinPlugin.Middleware(enforcer)
+// 授权中间件
+authzMiddleware := authzMiddleware.Middleware(authorizer)
 
 // 组合使用
 router.Use(authMiddleware, authzMiddleware)
 ```
 
-## 三、密码安全
+HTTP 与 gRPC 均提供同名中间件模块：`transport/http/middleware/authn`、`transport/http/middleware/authz`、`transport/grpc/middleware/authn`、`transport/grpc/middleware/authz`。
 
-### 3.1 BCrypt
+## 四、密码与加解密
 
-```go
-import bcryptPlugin "github.com/tx7do/go-wind-plugins/auth/bcrypt"
-
-// 哈希密码
-hashed, _ := bcryptPlugin.Hash("mypassword", 10)  // cost = 10
-
-// 验证密码
-err := bcryptPlugin.Compare(hashed, "mypassword")  // nil = 匹配
-```
-
-### 3.2 Argon2
+加解密统一由 `security/crypto` 提供，它基于 go-utils/crypto 重新导出 `Cipher` / `Hasher` / `Signer` / `Verifier` / `KeyExchanger` 五类接口，并像 encoding 一样提供按名称注册与查找的全局注册表。
 
 ```go
-import argon2Plugin "github.com/tx7do/go-wind-plugins/auth/argon2"
+import "github.com/tx7do/go-wind-plugins/security/crypto"
 
-hashed, _ := argon2Plugin.Hash("mypassword", argon2Plugin.WithTime(3),
-    argon2Plugin.WithMemory(64*1024), argon2Plugin.WithParallelism(2))
+// 内置实现：AES、RSA、SM2、SM4、HMAC、SM3/SHA256、ECDSA、ECDH
+cipher, _ := crypto.NewAESCipher(key, nil)
+encrypted, _ := cipher.Encrypt(plaintext)
+decrypted, _ := cipher.Decrypt(encrypted)
+
+// 注册与按名查找
+crypto.RegisterCipher(cipher)
+c := crypto.GetCipher("aes")
 ```
 
-## 四、TLS/SSL
+## 五、TLS/SSL
 
 ```go
 // HTTP TLS
@@ -191,7 +195,7 @@ grpcServer := grpcPlugin.NewServer(
 )
 ```
 
-## 五、CORS
+## 六、CORS
 
 ```go
 httpServer := httpPlugin.NewServer(
@@ -214,7 +218,7 @@ server:
       max_age: 86400
 ```
 
-## 六、限流安全
+## 七、限流安全
 
 ```go
 import ratelimitPlugin "github.com/tx7do/go-wind-plugins/ratelimit/tokenbucket"
@@ -225,6 +229,10 @@ limiter := ratelimitPlugin.New(
     ratelimitPlugin.WithPer("minute"),   // per minute
 )
 ```
+
+## 近期更新
+
+- **OPA**（`security/authz/opa`）：修复 `SetPolicies` 与读路径之间的数据竞态。
 
 ## 相关文档
 

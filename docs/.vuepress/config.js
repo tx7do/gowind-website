@@ -11,10 +11,10 @@ import {markdownChartPlugin} from "@vuepress/plugin-markdown-chart";
 
 
 export default defineUserConfig({
-    lang: 'en-US',
+    lang: 'zh-CN',
 
     title: 'GoWind 开源生态',
-    description: '一站式 GoWind 系列开源项目文档与使用指南',
+    description: 'GoWind：AI 时代的企业级全栈研发引擎 —— 用更轻量、更符合 AI 生成的 Go 现代架构，重构你的核心业务',
 
     theme: defaultTheme({
         logo: '/logo.png',
@@ -23,13 +23,28 @@ export default defineUserConfig({
         navbar: [
             {text: '首页', link: '/'},
             {text: '框架', link: '/framework/intro.md'},
-            {text: 'GoWind Admin', link: '/admin/intro.md'},
-            {text: 'GoWind CMS', link: '/cms/intro.md'},
-            {text: 'GoWind IM', link: '/im/intro.md'},
-            {text: 'GoWind UBA', link: '/uba/intro.md'},
-            {text: 'GoWind IoT', link: '/iot/intro.md'},
             {text: 'GoWind Toolkit', link: '/toolkit/intro.md'},
-            {text: 'GoWind Quant', link: '/quant/intro.md'},
+            {
+                text: '产品矩阵',
+                children: [
+                    {text: 'GoWind Admin（后台管理）', link: '/admin/intro.md'},
+                    {text: 'GoWind CMS（内容管理）', link: '/cms/intro.md'},
+                    {text: 'GoWind IM（即时通讯）', link: '/im/intro.md'},
+                    {text: 'GoWind UBA（行为分析）', link: '/uba/intro.md'},
+                    {text: 'GoWind IoT（物联网）', link: '/iot/intro.md'},
+                    {text: 'GoWind Shop（电商）', link: '/shop/intro.md'},
+                    {text: 'GoWind Edu（AI 教育）', link: '/edu/intro.md'},
+                    {text: 'GoWind OA（协同办公）', link: '/oa/intro.md'},
+                    {text: 'GoWind ERP（采购库存财务）', link: '/erp/intro.md'},
+                    {text: 'GoWind WMS（仓储管理）', link: '/wms/intro.md'},
+                    {text: 'GoWind Kanban（协作看板）', link: '/kanban/intro.md'},
+                    {text: 'GoWind Ledger（家庭记账）', link: '/ledger/intro.md'},
+                    {text: 'GoWind ShortPlay（短剧社区）', link: '/shortplay/intro.md'},
+                    {text: 'GoWind Ops（运维平台）', link: '/ops/intro.md'},
+                    {text: 'GoWind Quant（量化研究）', link: '/quant/intro.md'},
+                    {text: 'RushWind（Rust 生态）', link: '/rushwind/intro.md'},
+                ],
+            },
         ],
 
         // 侧边栏配置（分项目独立侧边栏）
@@ -100,6 +115,12 @@ export default defineUserConfig({
                     ],
                 },
                 {
+                    text: 'go-wind-flow 流程引擎',
+                    children: [
+                        '/framework/flow-intro.md',
+                    ],
+                },
+                {
                     text: '教程',
                     children: [
                         '/framework/tutorial-quick-start.md',
@@ -116,6 +137,7 @@ export default defineUserConfig({
                     children: [
                         '/admin/intro.md',
                         '/admin/installation.md',
+                        '/admin/release-notes.md',
                     ],
                 },
                 {
@@ -234,12 +256,46 @@ export default defineUserConfig({
                     ],
                 },
             ],
+            // GoWind Edu 侧边栏（闭源交付产品 · 面向学校/机构客户）
+            '/edu/': [
+                {
+                    text: 'GoWind Edu',
+                    children: [
+                        '/edu/intro.md',
+                        '/edu/student.md',
+                        '/edu/teacher.md',
+                    ],
+                },
+            ],
+            // GoWind ShortPlay 侧边栏
+            '/shortplay/': [
+                {
+                    text: 'GoWind ShortPlay（风印短剧）',
+                    children: [
+                        '/shortplay/intro.md',
+                        '/shortplay/quick-start.md',
+                    ],
+                },
+            ],
+            // GoWind Shop 侧边栏（开源项目）
+            '/shop/': [
+                {
+                    text: 'GoWind Shop',
+                    children: [
+                        '/shop/intro.md',
+                        '/shop/quick-start.md',
+                        '/shop/features.md',
+                        '/shop/trial.md',
+                    ],
+                },
+            ],
             // GoWind IM 侧边栏
             '/im/': [
                 {
                     text: 'GoWind IM',
                     children: [
                         '/im/intro.md',
+                        '/im/features.md',
                         '/im/installation.md',
                     ],
                 },
@@ -374,6 +430,7 @@ export default defineUserConfig({
                     children: [
                         '/toolkit/backend-code-generation.md',
                         '/toolkit/frontend-code-generation.md',
+                        '/toolkit/fieldmap.md',
                     ],
                 },
             ],
@@ -387,14 +444,78 @@ export default defineUserConfig({
                     ],
                 },
             ],
-            // GoWind Quant 侧边栏（研究项目 · 非卖品）
+            // GoWind Ops 侧边栏
+            '/ops/': [
+                {
+                    text: 'GoWind Ops',
+                    children: [
+                        '/ops/intro.md',
+                        '/ops/quick-start.md',
+                    ],
+                },
+            ],
+            // GoWind Quant 侧边栏
             '/quant/': [
                 {
-                    text: 'GoWind Quant（非卖品）',
+                    text: 'GoWind Quant',
                     children: [
                         '/quant/intro.md',
                         '/quant/strategies.md',
-                        '/quant/architecture.md',
+                    ],
+                },
+            ],
+            // 风行协同办公侧边栏（开源项目）
+            '/oa/': [
+                {
+                    text: '风行协同办公',
+                    children: [
+                        '/oa/intro.md',
+                    ],
+                },
+            ],
+            // 风行看板侧边栏（开源项目）
+            '/kanban/': [
+                {
+                    text: '风行看板',
+                    children: [
+                        '/kanban/intro.md',
+                    ],
+                },
+            ],
+            // 风行记账侧边栏（开源项目）
+            '/ledger/': [
+                {
+                    text: '风行记账',
+                    children: [
+                        '/ledger/intro.md',
+                    ],
+                },
+            ],
+            // GoWind ERP 侧边栏（开源项目）
+            '/erp/': [
+                {
+                    text: 'GoWind ERP',
+                    children: [
+                        '/erp/intro.md',
+                    ],
+                },
+            ],
+            // GoWind WMS 侧边栏（开源项目）
+            '/wms/': [
+                {
+                    text: 'GoWind WMS',
+                    children: [
+                        '/wms/intro.md',
+                    ],
+                },
+            ],
+            // RushWind 侧边栏（Rust 生态）
+            '/rushwind/': [
+                {
+                    text: 'RushWind（Rust 生态）',
+                    children: [
+                        '/rushwind/intro.md',
+                        '/rushwind/admin.md',
                     ],
                 },
             ],

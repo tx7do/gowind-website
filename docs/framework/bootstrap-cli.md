@@ -1,240 +1,109 @@
-# Bootstrap CLI 工具
+# Bootstrap 命令行集成
 
-go-wind-bootstrap 提供命令行工具，用于项目初始化、代码生成和开发辅助。
+go-wind-bootstrap 内置 [Cobra](https://github.com/spf13/cobra) 命令行支持：应用本身即是一个 Cobra 根命令，通过 `-c` 参数指定配置文件，开箱即用。
 
-## 一、安装
-
-```bash
-go install github.com/tx7do/go-wind-bootstrap/cmd/wind@latest
-```
-
-## 二、命令一览
-
-```bash
-$ wind --help
-GoWind Bootstrap CLI
-
-Usage:
-  wind [command]
-
-Available Commands:
-  new         创建新项目
-  run         启动服务（支持热重载）
-  gen         代码生成
-  config      检查/验证配置
-  version     版本信息
-
-Flags:
-  -h, --help   help for wind
-```
-
-## 三、创建新项目
-
-```bash
-# 基础项目
-wind new my-service
-
-# 指定插件组合
-wind new my-service \
-  --transport http,grpc \
-  --database mysql \
-  --cache redis \
-  --broker kafka \
-  --log zap \
-  --tracer jaeger
-
-# 指定模块路径
-wind new my-service --module github.com/myorg/my-service
-```
-
-### 生成的项目结构
-
-```
-my-service/
-├── cmd/
-│   └── server/
-│       └── main.go              # 入口（含 blank import）
-├── configs/
-│   └── config.yaml              # 配置模板
-├── ent/
-│   └── schema/                  # Ent 实体定义
-│       └── user.go
-├── api/
-│   └── v1/
-│       └── user.proto           # Protobuf API
-├── internal/
-│   ├── service/
-│   │   └── user_service.go      # 业务逻辑
-│   ├── repo/
-│   │   └── user_repo.go         # 数据访问
-│   └── router/
-│       └── router.go            # 路由配置
-├── Makefile
-├── Dockerfile
-├── go.mod
-└── go.sum
-```
-
-### 生成的 main.go
+## 一、一行接入 Cobra
 
 ```go
 package main
 
 import (
-    _ "github.com/tx7do/go-wind-plugins/transport/http"
-    _ "github.com/tx7do/go-wind-plugins/transport/grpc"
-    _ "github.com/tx7do/go-wind-plugins/log/zap"
-    _ "github.com/tx7do/go-wind-plugins/database/mysql"
-    _ "github.com/tx7do/go-wind-plugins/cache/redis"
-    _ "github.com/tx7do/go-wind-plugins/broker/kafka"
-    _ "github.com/tx7do/go-wind-plugins/tracer/jaeger"
+    "os"
 
-    "github.com/tx7do/go-wind-bootstrap"
-    _ "my-service/internal/router"
+    bootstrap "github.com/tx7do/go-wind-bootstrap"
 )
 
 func main() {
-    app := bootstrap.New("configs/config.yaml")
-    app.Run()
+    if err := bootstrap.RunAppWithFlags(bootstrap.NewCommandFlags()); err != nil {
+        os.Exit(1)
+    }
 }
 ```
 
-## 四、开发热重载
+`RunAppWithFlags` 创建 Cobra 根命令，解析 flag 后加载配置并启动应用，内部等价于 `RunApp(flags.Conf)`。
+
+## 二、命令行参数
+
+| 参数 | 说明 |
+|------|------|
+| `-c, --conf` | 配置文件路径（yaml/json/bin），默认 `config.yaml` |
 
 ```bash
-# 启动并监听文件变更
-wind run
+# 使用默认 config.yaml
+go run main.go
 
-# 等效于 air / realize 等热重载工具
-# 修改 .go 文件自动重新编译和重启
+# 指定配置文件
+go run main.go -c /path/to/config.yaml
+go run main.go --conf config.json
 ```
 
-```yaml
-# .wind.yaml（热重载配置）
-run:
-  watch:
-    - "*.go"
-    - "configs/*.yaml"
-    - "ent/schema/*.go"
-  exclude:
-    - "vendor"
-    - ".git"
-    - "tmp"
-  delay: 500ms         # 文件变更后等待时间
-  build_args:
-    - -race
-    - -tags=development
+配置文件格式按扩展名自动识别：`.yaml` / `.yml` → YAML，`.json` → JSON，`.bin` / `.pb` → Protobuf 二进制。
+
+## 三、扩展根命令
+
+`RunAppWithFlags` 接受可选的命令定制函数，可添加子命令、额外 flag 或修改命令元信息：
+
+```go
+flags := bootstrap.NewCommandFlags()
+
+if err := bootstrap.RunAppWithFlags(flags, func(root *cobra.Command) {
+    root.Use = "my-service"
+    root.Short = "订单服务"
+
+    // 添加自定义子命令
+    root.AddCommand(&cobra.Command{
+        Use:   "migrate",
+        Short: "执行数据库迁移",
+        RunE: func(cmd *cobra.Command, args []string) error {
+            // 迁移逻辑（可复用 flags.Conf 读取同一份配置）
+            return nil
+        },
+    })
+}); err != nil {
+    os.Exit(1)
+}
 ```
 
-## 五、代码生成
+需要更细的控制时，可直接使用底层构件：
 
-### 5.1 Ent 代码生成
+```go
+// CommandFlags：CLI flag 集合（Conf 配置路径）
+flags := bootstrap.NewCommandFlags()
 
-```bash
-# 从 schema 生成 Ent 代码
-wind gen ent
+// NewRootCmd：创建标准根命令，runE 在 flag 解析完成后调用
+root := bootstrap.NewRootCmd(flags, func(cmd *cobra.Command, args []string) error {
+    return bootstrap.RunApp(flags.Conf)
+})
 
-# 等效于 go generate ./ent
+// AddFlags：把 -c/--conf 绑定到你自己的 cobra 命令
+flags.AddFlags(myCmd)
+
+return root.Execute()
 ```
 
-### 5.2 Protobuf 代码生成
+## 四、程序化指定配置
 
-```bash
-# 从 .proto 生成 Go/TS/OpenAPI 代码
-wind gen proto
+不走命令行时，直接调用密封入口：
 
-# 指定输出目录
-wind gen proto --out ./api/gen
-```
+```go
+// 一行启动：加载配置 + 信号监听 + 运行 + 清理
+if err := bootstrap.RunApp("config.yaml"); err != nil {
+    log.Fatal(err)
+}
 
-### 5.3 CRUD 脚手架
-
-```bash
-# 根据实体定义生成 CRUD 代码
-wind gen crud --entity User
-
-# 生成内容：
-# - ent/schema/user.go（如有缺失）
-# - internal/repo/user_repo.go
-# - internal/service/user_service.go
-# - api/v1/user.proto
-```
-
-## 六、配置检查
-
-```bash
-# 验证配置文件格式
-wind config validate configs/config.yaml
-
-# 查看最终合并后的配置（含环境变量替换）
-wind config render configs/config.yaml
-
-# 检查配置项是否匹配已注册的插件
-wind config check
-```
-
-### 输出示例
-
-```bash
-$ wind config validate configs/config.yaml
-
-✓ server.http.addr = ":8080"
-✓ log.zap.level = "info"
-✓ database.default.dsn = "user:***@tcp(localhost:3306)/db"
-✗ cache.redis: unknown plugin "redis" (did you forget to import?)
-✗ auth.jwt.key = "" (empty, must set JWT_SECRET)
-
-2 errors, 0 warnings
-```
-
-## 七、版本管理
-
-```bash
-# 当前版本
-wind version
-
-# GoWind 生态版本
-wind version --all
-
-# 输出:
-# wind CLI:        v1.2.3
-# go-wind:         v1.5.0
-# go-wind-plugins:  v1.8.2
-# go-wind-bootstrap: v1.3.1
-```
-
-## 八、Makefile 集成
-
-生成的项目自带 Makefile：
-
-```makefile
-.PHONY: build run test gen
-
-build:
-	go build -o bin/server ./cmd/server
-
-run:
-	wind run
-
-dev:
-	go run ./cmd/server --config configs/config.yaml
-
-test:
-	go test ./... -v -cover
-
-gen:
-	wind gen ent
-	wind gen proto
-
-docker:
-	docker build -t my-service .
-
-clean:
-	rm -rf bin/ tmp/
+// 先加载配置对象，自行加工后再运行
+cfg, err := bootstrap.LoadConfigFromFile("config.yaml")
+if err != nil {
+    log.Fatal(err)
+}
+if err := bootstrap.Run(context.Background(), cfg); err != nil {
+    log.Fatal(err)
+}
 ```
 
 ## 相关文档
 
 - [Bootstrap 介绍](./bootstrap-intro.md)
 - [Bootstrap 配置系统](./bootstrap-config.md)
+- [Bootstrap 实战示例](./bootstrap-examples.md)
 - [快速入门教程](./tutorial-quick-start.md)

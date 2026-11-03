@@ -1,6 +1,6 @@
 # GoWind 框架
 
-GoWind 框架是一套 **积木式 Go 微服务框架**，由三个核心项目组成，提供从底层生命周期管理到声明式配置启动的完整基础设施。
+GoWind 框架是一套 **积木式 Go 微服务框架**，由三层组成：核心框架 go-wind、插件生态 go-wind-plugins、声明式启动器 go-wind-bootstrap，提供从底层生命周期管理到声明式配置启动的完整基础设施。
 
 ```mermaid
 graph TB
@@ -9,7 +9,7 @@ graph TB
     end
 
     subgraph "go-wind-plugins<br/>插件生态"
-        Plugins["100+ 适配器<br/>8+ 领域统一接口"]
+        Plugins["157 个独立模块<br/>130+ 插件 / 20+ 领域"]
     end
 
     subgraph "go-wind<br/>核心框架"
@@ -31,8 +31,10 @@ graph TB
 | 项目 | 仓库 | 定位 | 核心代码 |
 |------|------|------|---------|
 | **go-wind** | [tx7do/go-wind](https://github.com/tx7do/go-wind) | 核心框架：生命周期 + 最小接口 | < 500 行 |
-| **go-wind-plugins** | [tx7do/go-wind-plugins](https://github.com/tx7do/go-wind-plugins) | 插件生态：100+ 适配器，8+ 领域 | 按子模块独立版本 |
+| **go-wind-plugins** | [tx7do/go-wind-plugins](https://github.com/tx7do/go-wind-plugins) | 插件生态：130+ 插件，20+ 领域（157 个 go.mod 独立模块） | 按子模块独立版本 |
 | **go-wind-bootstrap** | [tx7do/go-wind-bootstrap](https://github.com/tx7do/go-wind-bootstrap) | 声明式启动器：YAML 配置驱动装配 | — |
+
+> **近期新增**：go-wind 核心新增 `beforeStart` / `afterStart` 两个生命周期钩子，为应用启动前后提供扩展点（详见 [App 生命周期管理](./core-lifecycle.md)）；`errors` 包的 `CodeToHTTP` 支持 400-599 错误码显式直通为 HTTP 状态码。
 
 ## 二、设计哲学
 
@@ -75,20 +77,22 @@ graph LR
 
 ## 三、插件领域总览
 
-go-wind-plugins 覆盖 8+ 领域，100+ 适配器：
+go-wind-plugins 以八大领域统一抽象为基础、多引擎适配，目前包含 **157 个 go.mod 独立模块**，约 **130+ 个插件**，覆盖 **20+ 领域**：
 
-| 领域 | 接口 | 适配器数量 | 示例 |
+| 领域 | 接口 | 插件数量 | 示例 |
 |------|------|-----------|------|
-| 配置中心 | Config | 14 | Apollo, Consul, Etcd, Nacos, Vault, K8s |
-| 服务注册 | Registry | 8 | Consul, Etcd, Nacos, Eureka, Zookeeper |
-| 日志 | Logger | 13 | Zap, Zerolog, Logrus, Loki, Sentry |
-| 传输协议 | Transport | 22+ | HTTP, gRPC, WebSocket, SSE, TCP, KCP |
-| 消息队列 | Broker | 12 | Kafka, RabbitMQ, NATS, MQTT, Pulsar, Redis |
+| 配置中心 | Config | 14 | Apollo, Consul, Etcd, Nacos, Polaris, Vault, K8s, ZooKeeper, Redis, OSS, HTTP, Env, File, FS |
+| 服务注册 | Registry | 8 + selector/resolver | Consul, Etcd, Nacos, Eureka, Zookeeper |
+| 日志 | Logger | 13 | Zap, Zerolog, Logrus, Loki, SLS, CLS, CloudWatch, Sentry |
+| 传输协议 | Transport | 31 | HTTP（4 驱动）, HTTP/3, gRPC, WebSocket, SSE, Socket.IO, SignalR, KCP, WebRTC, WebTransport, GraphQL, Thrift, tRPC, Cron, Asynq, Machinery, MCP |
+| 消息队列 | Broker | 12 | Kafka, RabbitMQ, NATS, MQTT, Pulsar, RocketMQ, NSQ, SQS, Redis, STOMP, Azure Service Bus, Google Pub/Sub |
 | 编解码 | Encoding | 12 | JSON, Protobuf, YAML, TOML, MsgPack |
-| 链路追踪 | Tracer | 3 | OTLP, Jaeger, OpenTelemetry |
-| 指标监控 | Metrics | 3 | Prometheus, OpenTelemetry, Datadog |
+| CRUD | Database | 19 | GORM, Ent, MongoDB, ClickHouse, Doris, ES, OpenSearch, InfluxDB, Cassandra, qdrant, milvus, neo4j, weaviate + api/pagination/cache/audit/viewer |
+| 安全 | Authn/Authz | 20 | 认证 10 套（JWT/OAuth2 等）、鉴权 9 套（Casbin, Cedar, Cerbos, OPA, Zanzibar 等）、crypto |
 
-此外还包括：安全（JWT/Casbin）、缓存（Redis/Local）、对象存储（MinIO/S3）、限流熔断（Sentinel/Hystrix）、AI 集成（OpenAI/LangChainGo）、工作流引擎（Temporal/Argo）等。
+此外还包括：熔断（4）、限流（3）、工作流引擎（Temporal/Argo/Conductor/GoWorkflows）、对象存储（2）、AI 集成（OpenAI/LangChainGo/Eino）、指标监控（Prometheus 等）、链路追踪（OTLP）、工具类（4）等领域，合计 20+ 领域。
+
+近期动态：MCP 传输透传 StreamableHTTP/SSE 服务选项；新增 vector 抽象对接 qdrant/milvus/neo4j/weaviate 四大向量图库；selector 客户端负载均衡 + resolver gRPC 适配器；transaction 本地事务四件套（outbox/saga/tcc/xa）。
 
 ## 四、快速开始
 

@@ -5,12 +5,16 @@ go-wind 的 Transport 模块定义了传输层的统一接口，支持 HTTP、gR
 ## 一、Server 接口
 
 ```go
-// transport/transport.go
+// transport/server.go
 type Server interface {
-    Start(context.Context) error
-    Stop(context.Context) error
-    Endpoint() []string
-    Type() string
+    // Start 开始接受连接。必须阻塞直到 ctx 被取消或发生错误。
+    Start(ctx context.Context) error
+    // Stop 优雅停机。传入的 ctx 携带超时 deadline，实现应予以尊重。
+    Stop(ctx context.Context) error
+    // Endpoint 返回实际监听地址。绑定 ":0"（OS 分配端口）时，
+    // 必须在 Start 开始接受连接后返回解析后的真实地址，
+    // 以便调用方将其注册到服务注册中心。
+    Endpoint() string
 }
 ```
 
@@ -18,15 +22,15 @@ type Server interface {
 
 ## 二、支持的协议
 
-| 协议 | 插件路径 | 典型场景 |
+传输层实现由适配器提供（遵循上述接口），当前落地情况：
+
+| 协议 | 适配器 | 典型场景 |
 |------|---------|---------|
-| HTTP | `plugins/transport/http` | REST API |
-| gRPC | `plugins/transport/grpc` | 内部服务调用 |
-| WebSocket | `plugins/transport/websocket` | 实时双向通信 |
-| SSE | `plugins/transport/sse` | 服务端推送 |
-| TCP | `plugins/transport/tcp` | 自定义协议 |
-| KCP | `plugins/transport/kcp` | 低延迟 UDP |
-| GraphQL | `plugins/transport/graphql` | GraphQL API |
+| HTTP | `go-wind-bootstrap/transport/http` ✅ | REST API |
+| gRPC | `go-wind-bootstrap/transport/grpc` ✅ | 内部服务调用 |
+| HTTP/3、GraphQL、SSE、WebSocket、TCP、UDP、KCP、Thrift、tRPC、WebTransport | 规划中 | 详见 Bootstrap 支持组件清单 |
+
+HTTP / gRPC 适配器的声明式配置与中间件编排见 [声明式中间件编排](./bootstrap-middleware.md)。
 
 ## 三、自定义 Transport
 
@@ -46,25 +50,35 @@ func NewServer(opts ...Option) *Server {
     return s
 }
 
+// Start 必须阻塞直到 ctx 被取消
 func (s *Server) Start(ctx context.Context) error {
     ln, err := net.Listen("tcp", s.addr)
     if err != nil {
         return err
     }
     s.listener = ln
-    go s.accept(ctx)
-    return nil
+
+    errCh := make(chan error, 1)
+    go func() {
+        errCh <- s.serve() // accept 循环
+    }()
+
+    select {
+    case err := <-errCh:
+        return err
+    case <-ctx.Done():
+        return nil
+    }
 }
 
 func (s *Server) Stop(ctx context.Context) error {
     return s.listener.Close()
 }
 
-func (s *Server) Endpoint() []string {
-    return []string{fmt.Sprintf("custom://%s", s.addr)}
+// 绑定 ":0" 时应在 Start 后返回解析出的真实地址
+func (s *Server) Endpoint() string {
+    return fmt.Sprintf("custom://%s", s.listener.Addr())
 }
-
-func (s *Server) Type() string { return "custom" }
 ```
 
 ## 四、多协议同时监听
@@ -75,7 +89,7 @@ app := wind.New(
     wind.WithServer(grpcServer),    // gRPC :9090
     wind.WithServer(wsServer),      // WebSocket :8081
 )
-// 三种协议同时运行，共享同一个 App 生命周期
+// 三种协议并发启动，共享同一个 App 生命周期；任一崩溃级联全量优雅退出
 ```
 
 ## 相关文档

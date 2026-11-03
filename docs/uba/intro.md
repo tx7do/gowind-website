@@ -1,6 +1,12 @@
 # GoWind UBA 产品介绍
 
-GoWind UBA（User Behavior Analytics，用户行为分析）是一个开箱即用的企业级用户行为分析与商业智能平台，基于 **Go（go-kratos 微服务框架）** 后端与 **Vue 3 + Ant Design Vue + Vben Admin** 前端构建。
+**GoWind UBA**（User Behavior Analytics，中文名「风行用户行为分析平台」）是一款基于 **Go（go-kratos 微服务框架）+ Vue 3 + ClickHouse/Doris 双引擎 OLAP** 的多租户用户行为分析系统，**v1.0.0 已正式首发**。
+
+- **25+ 分析模型**：通用分析 10 + 用户深度洞察 9 + 游戏专项 6
+- **增长闭环**：覆盖「采集 → 分析 → 存档 → 触达」全链路，内置 AI 助手
+- **双引擎 OLAP**：Apache Doris（默认）/ ClickHouse 二选一，共用同一份业务模型
+- **多端 SDK**：Web SDK（全埋点/离线补发/采样合规）+ C# SDK（Unity/Godot）
+- **开源免费**：MIT 协议
 
 > 让每一次用户行为都有迹可循，让每一份数据洞察触手可及。
 
@@ -15,57 +21,76 @@ UBA（User Behavior Analysis）是一种用于收集、分析和报告用户在�
 GoWind UBA 的核心数据链路是一条经典的流式数仓管道：
 
 ```
-客户端 SDK  →  Collector（采集）  →  Kafka（缓冲）  →  OLAP 引擎（Doris / ClickHouse，Routine Load / Kafka 引擎表消费落库）
+客户端 SDK  →  Collector（采集）  →  Kafka（缓冲）  →  OLAP 引擎（Doris / ClickHouse，Routine Load 消费落库）
 
-                Admin 后台  →  Admin Service（BFF）  →  Core（gRPC：建模/查询）  →  OLAP 引擎 + PostgreSQL（业务实体）
+管理后台  →  Admin Service（BFF）  →  Core（gRPC：建模 / 查询）  →  OLAP 引擎 + PostgreSQL（业务实体）
+
+uba-ingest（装配 CLI）→ 建表 / Routine Load 装配 / 每日 ETL（支持日内循环）
 ```
 
-> 写入路径上 **Core 默认不经手事件入库**——Collector 把事件发到 Kafka 后，由 OLAP 引擎自身的消费机制（Doris Routine Load / ClickHouse Kafka 引擎表）直接落库。Core 负责的是读侧的建模与查询。详见 [系统架构](./architecture.md)。
+> 写入路径上 **Core 默认不经手事件入库**——Collector 把事件发到 Kafka 后，由 Doris Routine Load 直接落库；Core 负责读侧的建模与查询。详见 [系统架构](./architecture.md)。
 
 ---
 
-## 二、真实能力清单
+## 二、功能全景
 
-> ⚠️ **请务必阅读**：UBA 是一个持续演进的项目。下列能力按**代码中真实实现的状态**划分。
+### 25+ 分析模型
 
-### 已实现（代码可验证）
+`AnalyticsService` 提供 25+ 个分析模型，按场景分为三组：**通用分析 10 个、用户深度洞察 9 个、游戏专项 6 个**，覆盖事件趋势、活跃用户、漏斗、留存、转化路径、用户分群、营收/LTV、关卡分析、滚服留存、同时在线（PCU/ACU）、经济系统等场景。
 
-| 能力域 | 内容 |
-|--------|------|
-| **数据采集** | 自研 Web SDK（TypeScript）+ C# SDK（Unity/Godot/.NET），批量上报 + 重试降级 + 卸载兜底；游戏专属维度 `serverId`/`level` |
-| **统一上报** | `POST /uba/v1/report`，appId + appSecret 应用级鉴权，混合上报行为/风险事件 |
-| **三服务架构** | Collector（采集 BFF）+ Core（核心业务）+ Admin（管理后台 BFF），基于 etcd 服务发现 |
-| **双 OLAP 引擎** | Apache Doris 与 ClickHouse 二选一，共用同一份业务模型，编译期常量 `UseClickHouse` 切换 |
-| **分析聚合（25 种）** | 覆盖通用 Web/APP 与游戏全场景的分析模型矩阵（见下表），前后端均已贯通 |
-| **事实表读取** | 会话 `Session`、用户路径 `EventPath`、用户行为画像 `UserBehaviorProfile` 的 CRUD 查询 |
-| **风险与标签** | 风险事件 `RiskEvent`、风险规则 `RiskRule`、标签定义 `TagDefinition`、用户标签 `UserTag`、ID 映射 `IdMapping` |
-| **组织与权限** | 多租户、用户/角色/权限/菜单、Casbin/OPA 策略引擎、字典体系、组织/岗位 |
-| **系统运维** | 文件存储（MinIO）、缓存管理、站内消息、登录/操作/API/权限审计、定时任务（Asynq）、SSE 实时推送 |
-| **前端管理后台** | 基于 Connect-RPC 生成的类型安全 API 层、TanStack Vue Query 数据层，内嵌 25 个分析模型视图 + 实时大屏 |
-| **BI 对接** | Apache Superset 容器直连 Doris，基于事实表构建仪表板 |
+文档站为每个模型提供了独立专页（含口径说明与操作指引），入口见 [数据分析师上手指南](/uba/analyst-getting-started.md)。
 
-#### 25 个分析模型矩阵
+### 增长闭环
 
-`AnalyticsService` 共 25 个 RPC，按场景分组（全部已实现，对应 `analytics.proto` 第 11-83 行）：
+围绕「采集 → 分析 → 存档 → 触达」，UBA 提供成套的闭环能力：
 
-| 场景 | 模型（RPC） |
-|------|------------|
-| **基础聚合** | 事件趋势 `EventTrend`、维度分组 `GroupBy`、活跃用户 `ActiveUsers`（DAU/WAU/MAU 滚动窗口真值） |
-| **转化与路径** | 漏斗 `Funnel`、留存 `Retention`、转化路径 `PathSankey`、行为序列 `BehaviorSequence` |
-| **用户深度** | 归因 `Attribution`、分布 `Distribution`、用户分群 `Segmentation`、点击热力 `Click`、间隔时间 `Interval` |
-| **生命周期** | 生命周期 `Lifecycle`、流失与回流 `Churn`、新老对比 `NewVsOld`、矩阵象限 `Matrix` |
-| **营收与价值** | 营收 `Revenue`（ARPU/ARPPU/GMV）、付费分层 `WhaleTier`、历史 LTV `LTV` |
-| **会话与异常** | 会话分析 `SessionAnalysis`（跳出率/深度）、同比环比异常 `Anomaly` |
-| **游戏专属** | 关卡分析 `LevelAnalysis`、滚服留存 `ServerRetention`、同时在线 `OnlineStats`（PCU/ACU）、经济系统 `Economy` |
+| 能力 | 说明 |
+|------|------|
+| 持久化分群 | 用户分群持久保存，供下游分析与触达复用 |
+| 自定义看板 | 自由组合图表，搭建专属看板 |
+| 阈值告警 | 指标越过阈值即触发告警 |
+| 定时报告 | 按计划生成并推送分析报告 |
+| 功能开关与 AB 实验 | 功能开关控制 + A/B 实验对比 |
+| 营销触达 | 面向分群用户的营销触达 |
+| 自助 SQL | 直接编写 SQL 查询 OLAP 数据 |
+| 用户 360 | 单用户全维度行为档案 |
+| ID-Mapping | 多端多源身份打通 |
+| 动态标签 | 基于规则自动维护用户标签 |
+| 可视化埋点 | 无需改代码的埋点配置 |
+| rrweb 会话回放 | 基于 rrweb 的用户会话回放 |
 
-### 规划中 / 已知缺口（详见 [附录 · 已知限制与路线图](./appendix.md)）
+### 实时大屏与导出
 
-| 项 | 现状 |
-|----|------|
-| Kafka 消费入库 | 默认由 **OLAP 引擎虚拟表消费**（ClickHouse Kafka 引擎表 / Doris Routine Load），数据可正常落库；Core 侧另预留微服务消费接口，吞吐不够时可启用。详见 [系统架构 · Kafka 消费入库机制](./architecture.md)。 |
-| WAU / MAU 小时粒度 | `ActiveUsers` 的日级 WAU/MAU 已基于 HLL 滚动窗口输出真值；仅 HOUR 粒度因无小时级状态，退化为等于 DAU。 |
-| 风险检测引擎 | 风险规则与风险事件的**存取**已实现，但「事件匹配规则并自动评分」的检测引擎尚未落地。 |
-| 移动端原生 SDK | 当前无 iOS/Android 原生 SDK，仅有 Web 与 C#（游戏）两条线。 |
+- **实时大屏**：基于 SSE 推送，支持双模式展示；
+- **服务端全量导出**：XLSX / CSV 两种格式，覆盖 7 类资源。
+
+### 日内循环 ETL
+
+`uba-ingest` 支持日内循环 ETL（`--loop --every`），白天也能看到当天数据，不必等到次日。
+
+### 通知域
+
+| 能力 | 说明 |
+|------|------|
+| 多通道 | 站内信 / 邮件 / SMS / Webhook |
+| 事件路由 | 按事件配置路由规则 |
+| 消息模板 | 通知内容模板化 |
+| 发送台账 | 全量发送记录可查 |
+
+### 风险引擎
+
+风险规则配置与风险事件管理，上报通道支持行为事件与风险事件混合上报，识别异常行为。
+
+### AI 模块
+
+| 能力 | 说明 |
+|------|------|
+| 对话 | AI 对话助手 |
+| RAG | 知识检索增强问答 |
+| 智能问数 | NL2SQL 自然语言查数，只读执行 |
+| 问数审计 | 智能问数的执行审计记录 |
+| 报表 AI 摘要 | 报表自动生成 AI 摘要 |
+| 租户 token 配额 | 按租户控制 AI token 用量 |
 
 ---
 
@@ -74,158 +99,121 @@ GoWind UBA 的核心数据链路是一条经典的流式数仓管道：
 ```mermaid
 graph TB
     subgraph 客户端
-        WebSDK["Web SDK<br/>浏览器 / Node"]
-        CSSDK["C# SDK<br/>Unity / Godot / .NET"]
+        WebSDK["Web SDK<br/>全埋点 / 离线补发 / 采样合规"]
+        CSSDK["C# SDK<br/>Unity / Godot"]
     end
 
     subgraph 接入层
-        Collector["Collector Service<br/>HTTP: 5700<br/>鉴权 · 校验 · 转发"]
+        Collector["Collector Service<br/>采集 BFF：鉴权 · 校验 · 转发"]
     end
 
-    subgraph 消息中间件
-        Kafka[("Kafka<br/>uba_events_raw / uba_risk_events")]
-    end
+    Kafka[("Kafka<br/>事件缓冲")]
 
     subgraph 计算与存储
-        Core["Core Service<br/>gRPC 动态端口（etcd 发现）<br/>建模 · 查询<br/>（预留微服务消费接口）"]
-        PG[("PostgreSQL<br/>业务 / 配置实体（Ent ORM）")]
-        OLAP[("OLAP 引擎<br/>Doris（默认）或 ClickHouse<br/>虚拟表 / Routine Load 消费 Kafka")]
+        OLAP[("OLAP 引擎<br/>Doris（默认）或 ClickHouse")]
+        PG[("PostgreSQL<br/>业务 / 配置实体")]
+        Core["Core Service<br/>gRPC：建模 · 查询"]
     end
 
     subgraph 应用层
-        Admin["Admin Service<br/>HTTP: 5600 / SSE: 5601<br/>管理后台 BFF"]
-        Frontend["Admin 前端<br/>Vue3 + Ant Design Vue + Vben"]
+        AdminUI["管理后台前端（Vue 3）"]
+        Admin["Admin Service<br/>管理后台 BFF"]
     end
 
-    subgraph 基础设施
-        Etcd[(Etcd<br/>服务发现)]
-        Redis[(Redis<br/>缓存 / 异步队列)]
-        MinIO[(MinIO<br/>对象存储)]
-        Jaeger[(Jaeger<br/>链路追踪)]
-    end
+    Ingest["uba-ingest 装配 CLI<br/>建表 / Routine Load / 每日 ETL"]
 
-    WebSDK -->|"POST /uba/v1/report"| Collector
-    CSSDK -->|"POST /uba/v1/report"| Collector
-    Collector -->|"Publish"| Kafka
-    Kafka -->|"虚拟表 / Routine Load 消费"| OLAP
-    Core --> PG
+    WebSDK --> Collector
+    CSSDK --> Collector
+    Collector --> Kafka
+    Kafka -->|"Routine Load"| OLAP
     Core --> OLAP
-    Frontend -->|"HTTP / SSE"| Admin
+    Core --> PG
+    AdminUI --> Admin
     Admin -->|"gRPC"| Core
-    Core -.->|"注册 / 发现"| Etcd
-    Admin -.->|"注册 / 发现"| Etcd
-    Collector -.->|"注册 / 发现"| Etcd
-    Core --> Redis
-    Admin --> Redis
+    Ingest -.-> OLAP
 ```
 
-### 三大服务职责
+### 服务组成
 
-| 服务 | 服务监听端口 | 职责 |
-|------|------------|------|
-| **Collector Service** | HTTP `5700` | 接收 SDK 上报，应用鉴权、字段校验与补全，转发至 Kafka。**无状态**，可水平扩展。 |
-| **Core Service** | gRPC 动态端口（etcd 发现） | 事件入库、分析建模、风险检测、标签管理、用户画像、数据同步——承载所有「重」业务逻辑。 |
-| **Admin Service** | HTTP `5600` / SSE `5601` | 管理后台的 HTTP 网关，**薄转发层**，请求转发至 Core，提供 SSE 推送与 Swagger 文档。 |
-
-> 关于端口的说明：上表为**服务实际监听端口**，docker-compose 的宿主机映射已与之统一（admin `5600/5601`、collector `5700`），直接访问即可。完整对照见 [附录 · 端口对照表](./appendix.md)。
-
----
-
-## 四、技术栈
-
-### 后端
-
-| 层级 | 技术 | 说明 |
+| 服务 | 定位 | 职责 |
 |------|------|------|
-| 语言 | [Go](https://go.dev/) 1.25+ | 高性能编译型语言 |
-| 框架 | [go-kratos](https://go-kratos.dev/) v2 | 微服务框架 |
-| 依赖注入 | [Wire](https://github.com/google/wire) | 编译时依赖注入 |
-| ORM | [Ent](https://entgo.io/) | Go 实体框架（PostgreSQL） |
-| OLAP 引擎 | [Apache Doris](https://doris.apache.org/) / [ClickHouse](https://clickhouse.com/) | 列式存储，二选一 |
-| 消息队列 | [Kafka](https://kafka.apache.org/) | 事件数据管道 |
-| 缓存 | [Redis](https://redis.io/) | 内存数据库 + 异步任务队列 |
-| 对象存储 | [MinIO](https://min.io/) | S3 兼容对象存储 |
-| 服务注册 | [Etcd](https://etcd.io/) | 服务发现与配置 |
-| 链路追踪 | [Jaeger](https://www.jaegertracing.io/) + OpenTelemetry | 分布式可观测 |
-| API 定义 | [Protobuf](https://protobuf.dev/) + [buf.build](https://buf.build/) | 接口契约优先 |
-| 权限引擎 | [Casbin](https://casbin.org/) / OPA | 策略驱动鉴权 |
-| 异步任务 | [Asynq](https://github.com/hibiken/asynq) | 基于 Redis 的异步任务队列 |
-| BI 平台 | [Apache Superset](https://superset.apache.org/) | 数据可视化与报表 |
-
-### 前端（管理后台）
-
-| 技术 | 说明 |
-|------|------|
-| [Vue 3](https://vuejs.org/) 3.5 | 渐进式前端框架 |
-| TypeScript | 类型安全 |
-| [Ant Design Vue](https://antdv.com/) | 企业级 UI 组件库 |
-| [Vben Admin](https://doc.vben.pro/) 5.4 | 后台管理框架（monorepo） |
-| [Pinia](https://pinia.vuejs.org/) | 状态管理 |
-| [TanStack Vue Query](https://tanstack.com/query/latest) | 数据获取与缓存层 |
-| [Vite](https://vitejs.dev/) | 构建工具 |
+| admin-service | 管理后台 BFF | 承载管理后台 HTTP API 与 SSE 推送 |
+| collector-service | 采集 BFF | 接收 SDK 上报，应用鉴权、字段校验与补全，转发 Kafka；无状态，可水平扩展 |
+| core-service | 核心服务 | 分析建模、查询、分群、标签、通知、AI 等重业务逻辑 |
+| uba-ingest | 装配 CLI | 建表、配置 Routine Load、每日 ETL（支持 `--loop --every` 日内循环） |
 
 ### 数据采集 SDK
 
-| SDK | 适用平台 | 包路径 |
-|------|---------|--------|
-| Web SDK（TypeScript） | 浏览器 / Node | `frontend/sdk/web/uba/`（`@go-wind-uba/uba-sdk`） |
-| C# SDK（.NET Standard 2.0） | Unity（原生 + WebGL）/ Godot 4 / .NET | `sdk/csharp/` |
+| SDK | 适用平台 | 特性 |
+|-----|---------|------|
+| Web SDK（TypeScript） | 浏览器 / Node | 全埋点、离线补发、采样合规 |
+| C# SDK（.NET Standard 2.0） | Unity（原生 + WebGL）/ Godot 4 / .NET | 游戏专属维度 `serverId` / `level` |
 
 ---
 
-## 五、读者导航
+## 四、界面预览
+
+| 分析仪表盘 | 事件分析 |
+| :---: | :---: |
+| ![分析仪表盘](/assets/images/uba/dashboard-analytics.png) | ![事件分析](/assets/images/uba/event-analysis.png) |
+
+---
+
+## 五、部署与体验
+
+- **Docker Compose 一键部署**：OLAP 引擎默认使用 Doris（FE/BE），ClickHouse 二选一切换，详见 [Docker 部署](./deploy-docker.md)
+- **数据装填**：Kafka + Routine Load 消费落库，由 `uba-ingest` 完成装配
+- **可选 BI**：Apache Superset 容器直连引擎，基于事实表搭建仪表板，详见 [Superset 部署](./deploy-superset.md)
+- **演示数据**：仓库内提供 `sql/postgresql/demo-data.sql`，导入后即可获得开箱可分析的数据
+
+::: tip 关于在线演示
+UBA 暂无公网演示站点。本地体验路径：按 [Docker 部署](./deploy-docker.md) 拉起三服务与依赖组件，导入演示数据 `sql/postgresql/demo-data.sql`，即可登录管理后台开始分析。
+
+商务合作与技术支持微信：`yang_lin_bo`
+:::
+
+---
+
+## 六、读者导航
 
 本套文档**按角色分栏**组织。请根据你的身份选择阅读路径：
 
-### 🧑‍💻 二次开发者
+### 二次开发者
 
 关心「如何在 UBA 上做二次开发、加接口、加页面、加实体」。
 
 1. 先读 [安装指南](./installation.md) 把三服务跑起来
 2. 读 [系统架构](./architecture.md) 和 [后端模块总览](./backend-modules.md) 建立全局观
 3. 读 [后端 API 契约](./backend-api.md) 理解 proto 优先的开发模式
-4. 跟着教程动手：
-   - [代码生成管线](./tutorial-codegen.md)
-   - [新增对外服务](./tutorial-new-service.md)
-   - [新增业务实体](./tutorial-new-entity.md)
-   - [新增前端页面](./tutorial-new-page.md)
+4. 跟着教程动手：[代码生成管线](./tutorial-codegen.md)、[新增对外服务](./tutorial-new-service.md)、[新增业务实体](./tutorial-new-entity.md)、[新增前端页面](./tutorial-new-page.md)
 5. 接 SDK 时读 [Web SDK 接入](./sdk-web.md) / [C# SDK 接入](./sdk-csharp.md)
 
-### 🛠️ 运维人员
+### 运维人员
 
 关心「如何部署、配置、监控、保障稳定」。
 
 1. 读 [系统架构](./architecture.md) 了解三服务与依赖
-2. 部署：
-   - [Docker 部署](./deploy-docker.md)
-   - [配置详解](./deploy-config.md)（**含默认口令/密钥安全清单，务必轮换**）
-   - [PM2 部署](./deploy-pm2.md)
+2. 部署：[Docker 部署](./deploy-docker.md)、[配置详解](./deploy-config.md)（**含默认口令/密钥安全清单，务必轮换**）、[PM2 部署](./deploy-pm2.md)
 3. BI 对接：[Superset 部署](./deploy-superset.md)
 4. 故障排查与端口对照：[附录](./appendix.md)
 
-### 📊 数据分析师
+### 数据分析师
 
 关心「数据从哪来、存在哪、怎么查、怎么分析」。
 
-1. 读 [数据分析师上手指南](./analyst-getting-started.md)（含 OLAP 表与字段地图）
-2. 掌握核心分析能力：
-   - [事件趋势分析](./analyst-event-trend.md)
-   - [漏斗分析](./analyst-funnel.md)
-   - [留存分析](./analyst-retention.md)
+1. 读 [数据分析师上手指南](/uba/analyst-getting-started.md)（含 25 个分析模型专页入口与 OLAP 表字段地图）
+2. 掌握核心分析能力：[事件趋势分析](./analyst-event-trend.md)、[漏斗分析](./analyst-funnel.md)、[留存分析](./analyst-retention.md)
 3. 进阶查询：[OLAP 查询手册](./analyst-olap-cookbook.md)
 4. 与 BI 协作：[Superset 部署](./deploy-superset.md)
 
 ---
 
-## 六、相关文档
+## 七、相关文档与获取帮助
 
 - 项目源码与 README：[go-wind-uba](https://github.com/tx7do/go-wind-uba)
-- 技术基座：[GoWind Admin 文档](/admin/intro.md)（UBA 与 Admin/CMS 共享同一套 kratos + Ent + 权限基座）
+- 反馈与提问：[GitHub Issues](https://github.com/tx7do/go-wind-uba/issues)
+- 技术基座：[GoWind Admin 文档](/admin/intro.md)（UBA 与 Admin/CMS 共享同一套 go-kratos + Ent + 权限基座）
 - 通用指南：[快速开始](/guide/getting-started.md)
-
----
-
-## 七、获取帮助
-
-- 🐛 反馈与提问：[GitHub Issues](https://github.com/tx7do/go-wind-uba/issues)
-- 💬 讨论：[GitHub Discussions](https://github.com/tx7do/go-wind-uba/discussions)
+- 商务合作与技术支持微信：`yang_lin_bo`
+- 商务合作与技术支持邮箱：<yanglinbo@gmail.com>
+- 开源协议：**MIT**

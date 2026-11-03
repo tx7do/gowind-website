@@ -1,245 +1,152 @@
 # Bootstrap SPI 机制
 
-go-wind-bootstrap 通过 SPI（Service Provider Interface）机制实现插件自动注册和实例化。
+go-wind-bootstrap 通过 SPI（Service Provider Interface）机制实现 Builder 自注册与自动装配：每个适配器子包在 `init()` 中把 Builder 注册到全局注册表，用户只需空导入（blank import）适配器包，框架即可按配置自动组装组件。
 
 ## 一、SPI 工作流程
 
 ```mermaid
 graph TB
-    A["main.go<br/>blank import 插件"] --> B["插件 init()<br/>注册 Factory"]
-    B --> C["Bootstrap 读取 YAML"]
-    C --> D["按配置查找 Factory"]
-    D --> E["Factory 创建实例"]
-    E --> F["注入到 App"]
+    A["main.go<br/>blank import 适配器"] --> B["适配器 init()<br/>MustRegisterXxxBuilder"]
+    B --> C["Bootstrap 读取 BootstrapConfig"]
+    C --> D["按配置类型查找 Builder"]
+    D --> E["Builder 创建实例"]
+    E --> F["组装 wind.Option 链 → wind.App"]
 ```
 
-## 二、Registry 全貌
+## 二、Builder 注册表全貌
 
-```go
-// bootstrap/registry/registry.go
+注册表按域（domain）组织，每个域一张字符串键控的 map，键是类型常量（如 `ServerTypeHTTP = "http"`、`LoggerTypeZap = "zap"`），与配置中的类型值一致：
 
-// ===== Transport =====
-func RegisterTransport(name string, factory TransportFactory)
-func NewTransport(name string, opts ...) (transport.Server, error)
+| 域 | Builder 签名 | 注册函数 |
+|----|-------------|---------|
+| Server | `func(cfg *v1.Server) (transport.Server, error)` | `MustRegisterServerBuilder` |
+| Log | `func(cfg *v1.Logger) (log.Logger, func(), error)` | `MustRegisterLogBuilder` |
+| Registry | `func(ctx, cfg *v1.Registry) (Registry, func(), error)` | `MustRegisterRegistryAction` |
+| Config | `func(ctx, cfg *v1.Config) (func(), error)` | `MustRegisterConfigAction` |
+| Tracer | `func(cfg *v1.Tracer) (interface{}, func(), error)` | `MustRegisterTracerBuilder` |
+| Metrics | `func(cfg *v1.Metrics) (func(), error)` | `MustRegisterMetricsBuilder` |
+| Broker | `func(ctx, cfg *v1.Broker) (any, func(), error)` | `MustRegisterBrokerBuilder` |
+| Storage | `func(ctx, cfg *v1.Storage) (any, func(), error)` | `MustRegisterStorageBuilder` |
+| Ai | `func(ctx, cfg *v1.Ai) (any, func(), error)` | `MustRegisterAiBuilder` |
+| Workflow | `func(ctx, cfg *v1.Workflow) (any, func(), error)` | `MustRegisterWorkflowBuilder` |
+| Cache | `func(ctx, cfg *v1.Cache) (any, func(), error)` | `MustRegisterCacheBuilder` |
+| ScriptEngine | `func(ctx, cfg *v1.Script) (any, func(), error)` | `MustRegisterScriptEngineBuilder` |
+| Database | `func(ctx, cfg *v1.Database) (any, func(), error)` | `MustRegisterDatabaseBuilder` |
 
-// ===== Log =====
-func RegisterLog(name string, factory LogFactory)
-func NewLog(name string, opts ...) (log.Logger, error)
-
-// ===== Database =====
-func RegisterDatabase(name string, factory DatabaseFactory)
-func NewDatabase(name string, opts ...) (*ent.Client, error)
-
-// ===== Cache =====
-func RegisterCache(name string, factory CacheFactory)
-func NewCache(name string, opts ...) (cache.Cache, error)
-
-// ===== Broker =====
-func RegisterBroker(name string, factory BrokerFactory)
-func NewBroker(name string, opts ...) (broker.Broker, error)
-
-// ===== Tracer =====
-func RegisterTracer(name string, factory TracerFactory)
-func NewTracer(name string, opts ...) (tracer.Tracer, error)
-
-// ===== Config Source =====
-func RegisterConfig(name string, factory ConfigFactory)
-func NewConfig(name string, opts ...) (config.Source, error)
-
-// ===== Registry =====
-func RegisterRegistry(name string, factory RegistryFactory)
-func NewRegistry(name string, opts ...) (registry.Registry, error)
-
-// ===== OSS =====
-func RegisterOSS(name string, factory OSSFactory)
-func NewOSS(name string, opts ...) (oss.OSS, error)
-```
+每个域同时提供 `RegisterXxx`（返回 error）与 `MustRegisterXxx`（出错 panic，专供 `init()` 使用），以及 `ListXxxBuilders()` 诊断函数。
 
 ## 三、SPI 注册示例
 
-### 3.1 Transport 注册
+### 3.1 适配器自注册
+
+每个适配器子包的 `init()` 只有一行：
 
 ```go
-// plugins/transport/http/register.go
+// transport/http/http.go
 package http
 
-import (
-    "github.com/tx7do/go-wind/transport"
-    "github.com/tx7do/go-wind-bootstrap/registry"
-)
-
 func init() {
-    registry.RegisterTransport("http", NewServer)
+    bootstrap.MustRegisterServerBuilder(bootstrap.ServerTypeHTTP, newBuilder)
 }
 ```
 
-当 main.go 中 `_ "github.com/tx7do/go-wind-plugins/transport/http"` 时，`init()` 自动执行，将 HTTP Server 的工厂函数注册到 Registry。
+```go
+// log/zap/zap.go
+func init() {
+    bootstrap.MustRegisterLogBuilder(bootstrap.LoggerTypeZap, newBuilder)
+}
+```
 
-### 3.2 Bootstrap 自动实例化
+```go
+// database/gorm/client.go
+func init() {
+    bootstrap.MustRegisterDatabaseBuilder(bootstrap.DatabaseTypeGorm, newBuilder)
+}
+```
+
+main.go 中空导入适配器包，`init()` 即自动执行：
+
+```go
+import (
+    _ "github.com/tx7do/go-wind-bootstrap/log/zap"       // 注册 Zap Logger Builder
+    _ "github.com/tx7do/go-wind-bootstrap/transport/http" // 注册 HTTP Server Builder
+)
+```
+
+### 3.2 Bootstrap 自动装配
+
+Bootstrap 解析配置时按 proto 的 optional 字段逐个检查，命中即查表调用对应 Builder：
 
 ```yaml
-# config.yaml
 server:
-  http:                    # key = "http" → 查找注册名 "http"
+  http:          # ServerTypeHTTP → serverBuilders["http"]
     addr: ":8080"
+
+logger:
+  type: zap      # LoggerTypeZap → logBuilders["zap"]
+  zap:
+    level: info
 ```
 
-Bootstrap 解析配置时：
+以 HTTP 为例，`newBuilder` 读取 `cfg.GetHttp()`，创建 Server、按配置挂载中间件，再依次调用 `RegisterServerSetup` 注册的路由回调。
 
-1. 遍历 `server` 下的所有 key
-2. 对每个 key，调用 `registry.NewTransport(key, options...)`
-3. 返回的 Server 自动添加到 App
+## 四、SPI 装配顺序
 
-### 3.3 Database 注册
-
-```go
-// plugins/database/mysql/register.go
-package mysql
-
-func init() {
-    registry.RegisterDatabase("mysql", NewClient)
-}
-```
-
-```yaml
-database:
-  default:                # 连接名（不参与查找）
-    driver: mysql         # 查找注册名
-    dsn: "..."
-```
-
-## 四、SPI 装配详解
-
-以一个完整服务为例：
-
-```go
-import (
-    _ "github.com/tx7do/go-wind-plugins/transport/http"
-    _ "github.com/tx7do/go-wind-plugins/transport/grpc"
-    _ "github.com/tx7do/go-wind-plugins/log/zap"
-    _ "github.com/tx7do/go-wind-plugins/database/mysql"
-    _ "github.com/tx7do/go-wind-plugins/cache/redis"
-    _ "github.com/tx7do/go-wind-plugins/broker/kafka"
-    _ "github.com/tx7do/go-wind-plugins/registry/consul"
-    _ "github.com/tx7do/go-wind-plugins/tracer/jaeger"
-    _ "github.com/tx7do/go-wind-plugins/metrics/prometheus"
-)
-```
-
-Bootstrap 装配顺序：
+`Bootstrap` 按固定顺序解析各域配置：
 
 ```mermaid
 graph TD
-    A["1. 解析 YAML"] --> B["2. 创建 Logger<br/>log.zap"]
-    B --> C["3. 创建 Tracer<br/>tracer.jaeger"]
-    C --> D["4. 创建 Database<br/>database.default"]
-    D --> E["5. 创建 Cache<br/>cache.redis"]
-    E --> F["6. 创建 Broker<br/>broker.kafka"]
-    F --> G["7. 创建 Registry<br/>registry.consul"]
-    G --> H["8. 创建 Transport<br/>server.http + server.grpc"]
-    H --> I["9. 注册 Metrics<br/>prometheus /metrics"]
-    I --> J["10. 创建 App<br/>wind.New(servers...)"]
-    J --> K["11. App.Run()"]
+    A["1. App 元数据<br/>app.*"] --> B["2. Logger<br/>logger.*"]
+    B --> C["3. Server<br/>server.http / server.grpc / ..."]
+    C --> D["4. Registry<br/>registry.*"]
+    D --> E["5. Config Source<br/>config.*"]
+    E --> F["6. Tracer<br/>tracer.*"]
+    F --> G["7. Metrics<br/>metrics.*"]
+    G --> H["8. Broker<br/>broker.*"]
+    H --> I["9-13. Storage / AI / Workflow<br/>/ Cache / Script Engine"]
+    I --> J["14. Database<br/>database.*"]
+    J --> K["挂 AfterStart / BeforeStop 钩子<br/>（注册中心实例注册/注销）"]
+    K --> L["wind.New(opts...) → App.Run()"]
 ```
 
-## 五、自定义 SPI
+## 五、自定义 Builder
 
-### 5.1 定义接口
+当内置适配器不满足需求时，用与内置适配器相同的 API 注册自定义 Builder：
 
 ```go
-// myapp/notifier/notifier.go
-package notifier
+// 注册自定义 Registry Action（签名见 builder.go：入参为 Registry 配置，
+// 返回 Registry 实例 + cleanup）
+bootstrap.MustRegisterRegistryAction(bootstrap.RegistryTypeConsul,
+    func(ctx context.Context, cfg *v1.Registry) (bootstrap.Registry, func(), error) {
+        // 创建 Consul 注册中心客户端...
+        return reg, func() { /* cleanup */ }, nil
+    },
+)
 
-type Notifier interface {
-    Notify(ctx context.Context, message string) error
-}
+// 注册自定义 Broker Builder
+bootstrap.MustRegisterBrokerBuilder(bootstrap.BrokerTypeKafka,
+    func(ctx context.Context, cfg *v1.Broker) (any, func(), error) {
+        // 创建 Kafka Broker...
+        return broker, func() { /* cleanup */ }, nil
+    },
+)
 ```
 
-### 5.2 实现 Factory
+## 六、实例生命周期
 
-```go
-// myapp/notifier/email/email.go
-package email
+每个 Builder 返回可选的 `cleanup` 函数，Bootstrap 将各域的 cleanup 聚合为一个总的清理链，在应用停止后统一执行（释放连接、注销实例、刷新 tracer 等）：
 
-type Notifier struct {
-    smtpAddr string
-}
+- **半密封模式**：`bctx.Cleanup()` 触发；
+- **全密封模式**：`RunApp` 内部自动 `defer cleanup()`。
 
-func New(opts ...Option) notifier.Notifier {
-    n := &Notifier{}
-    for _, opt := range opts { opt(n) }
-    return n
-}
-
-func (n *Notifier) Notify(ctx context.Context, msg string) error {
-    // 发送邮件
-    return nil
-}
-```
-
-### 5.3 注册到 Bootstrap Registry
-
-```go
-// myapp/notifier/email/register.go
-package email
-
-import "myapp/bootstrap/registry"
-
-type Factory func(opts ...Option) notifier.Notifier
-
-func init() {
-    registry.RegisterNotifier("email", New)
-}
-```
-
-### 5.4 使用
-
-```yaml
-# config.yaml
-notifier:
-  email:
-    smtp_addr: "smtp.example.com:587"
-    from: "noreply@example.com"
-```
-
-```go
-import _ "myapp/notifier/email"
-
-func main() {
-    app := bootstrap.New("config.yaml")
-    app.Run()
-}
-```
-
-## 六、SPI 生命周期
-
-每个 SPI 实例可以可选实现以下接口：
-
-```go
-// 初始化（创建后调用）
-type Initializer interface {
-    Init(ctx context.Context) error
-}
-
-// 启动（App.Run 时调用）
-type Starter interface {
-    Start(ctx context.Context) error
-}
-
-// 停止（App 停止时逆序调用）
-type Stopper interface {
-    Stop(ctx context.Context) error
-}
-```
-
-Bootstrap 自动检测并调用对应方法。
+注册中心的实例注册/注销由 bootstrap 层统一接线：应用启动后（`wind.WithAfterStart`）以真实监听端点注册到所有已配置的注册中心，优雅停机时（`wind.WithBeforeStop`）在服务器停止前注销——Builder 只负责创建注册中心客户端本身。
 
 ## 七、SPI vs Google Wire
 
 | 对比项 | Bootstrap SPI | Google Wire |
 |--------|--------------|-------------|
 | 依赖方式 | 运行时注册 | 编译时生成 |
-| 灵活性 | 高（可热插拔） | 中（编译确定） |
+| 灵活性 | 高（配置驱动选择实现） | 中（编译确定） |
 | 类型安全 | 运行时检查 | 编译时检查 |
 | 配置驱动 | YAML 驱动 | 代码驱动 |
 | 学习成本 | 低 | 中 |

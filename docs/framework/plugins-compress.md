@@ -1,5 +1,15 @@
 # 压缩与序列化插件
 
+::: warning 家族现状说明（以仓库为准）
+go-wind-plugins 仓库中**已无 `compress/` 插件家族**——gzip / snappy / lz4 / zstd / brotli 均无对应插件目录，压缩能力不以独立插件形式提供，去向无官方说明：
+
+- **消息压缩**：由各消息中间件引擎在连接/生产者配置中支持（如 Kafka producer 的 `compression: none | gzip | snappy | lz4 | zstd`，NSQ 的 snappy、RocketMQ 的 brotli 等均作为引擎依赖存在）；
+- **HTTP 响应压缩**：无内置压缩中间件插件，需按标准 `Accept-Encoding` 语义在业务/网关层处理；
+- **序列化**：由 `encoding/` 家族的 12 个编解码插件承担（见第二节对比表与 [编码解码插件](./plugins-encoding.md)）。
+
+下文第一节「压缩插件」的插件清单以历史文档留存，**以仓库现状为准**。
+:::
+
 go-wind-plugins 提供压缩和序列化辅助插件，减少网络传输体积和存储空间。
 
 ## 一、压缩插件

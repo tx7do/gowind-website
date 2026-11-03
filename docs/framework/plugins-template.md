@@ -1,5 +1,9 @@
 # 模板渲染与验证插件
 
+::: warning 家族现状说明（以仓库为准）
+go-wind-plugins 仓库中**已无 `template/` 插件家族**——模板渲染（gotemplate / handlebars / jet）、数据验证（`validator`）与国际化（`i18n`）在仓库现状中均无对应模块目录，去向无官方说明，本文内容以历史文档留存，**以仓库现状为准**。
+:::
+
 go-wind-plugins 提供模板渲染和数据验证插件，用于邮件模板、API 参数校验等场景。
 
 ## 一、模板渲染

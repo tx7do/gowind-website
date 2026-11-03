@@ -1,74 +1,60 @@
 # AI 插件
 
-go-wind-plugins 提供统一的 AI 大模型接口，支持 OpenAI、Claude、Gemini、Ollama 等。
+go-wind-plugins 提供 AI 大模型集成，内置 OpenAI、LangChainGo、Eino 三个插件。每个 AI 子模块独立定义配置和客户端，返回各 SDK 的原生类型，支持云端模型与本地模型（如 Ollama）。
 
-## 一、Client 接口
+## 一、插件列表
 
-```go
-type Client interface {
-    Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, error)
-    ChatStream(ctx context.Context, req *ChatRequest) (<-chan ChatChunk, error)
-    Embedding(ctx context.Context, text string) ([]float32, error)
-    Models(ctx context.Context) ([]Model, error)
-}
-```
+| 插件 | 导入路径 | 框架 |
+|------|---------|------|
+| OpenAI | `plugins/ai/openai` | sashabaranov/go-openai |
+| LangChainGo | `plugins/ai/langchaingo` | tmc/langchaingo |
+| Eino | `plugins/ai/eino` | cloudwego/eino |
 
-## 二、适配器列表
-
-| 适配器 | 导入路径 | 后端模型 |
-|--------|---------|---------|
-| OpenAI | `plugins/ai/openai` | GPT-4, GPT-3.5, DALL-E |
-| Claude | `plugins/ai/claude` | Claude 3.5 Sonnet/Opus/Haiku |
-| Gemini | `plugins/ai/gemini` | Gemini Pro/Ultra |
-| Ollama | `plugins/ai/ollama` | Llama 3, Mistral 等本地模型 |
-| DeepSeek | `plugins/ai/deepseek` | DeepSeek V3, R1 |
-
-## 三、OpenAI
+## 二、OpenAI
 
 ```go
-import openaiPlugin "github.com/tx7do/go-wind-plugins/ai/openai"
+import "github.com/tx7do/go-wind-plugins/ai/openai"
 
-client := openaiPlugin.New(
-    openaiPlugin.WithAPIKey("sk-xxx"),
-    openaiPlugin.WithModel("gpt-4"),
-    openaiPlugin.WithBaseURL("https://api.openai.com/v1"),
-    openaiPlugin.WithTimeout(30*time.Second),
-)
+client, _ := openai.NewClient(&openai.Config{
+    Type:           openai.ModelTypeCloud,        // ModelTypeLocal | ModelTypeCloud
+    ModelName:      "gpt-4",
+    TimeoutSeconds: 30,
+    Cloud: &openai.CloudConfig{
+        ApiKey:  "sk-xxx",
+        BaseUrl: "https://api.openai.com/v1",
+    },
+})
+// 返回原生 *openai.Client（sashabaranov/go-openai）
 ```
 
 ### 对话
 
 ```go
-resp, _ := client.Chat(ctx, &ai.ChatRequest{
-    Messages: []ai.Message{
+resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+    Model: "gpt-4",
+    Messages: []openai.ChatCompletionMessage{
         {Role: "system", Content: "You are a helpful assistant."},
         {Role: "user", Content: "Explain Go interfaces in one sentence."},
     },
     Temperature: 0.7,
     MaxTokens:   200,
 })
-fmt.Println(resp.Content)
+fmt.Println(resp.Choices[0].Message.Content)
 ```
 
 ### 流式对话
 
 ```go
-stream, _ := client.ChatStream(ctx, &ai.ChatRequest{
-    Messages: []ai.Message{
-        {Role: "user", Content: "Write a haiku about Go programming."},
-    },
-})
+stream, _ := client.CreateChatCompletionStream(ctx, req)
+defer stream.Close()
 
-for chunk := range stream {
-    fmt.Print(chunk.Content)
+for {
+    chunk, err := stream.Recv()
+    if err != nil {
+        break
+    }
+    fmt.Print(chunk.Choices[0].Delta.Content)
 }
-```
-
-### Embedding
-
-```go
-embedding, _ := client.Embedding(ctx, "Go is a statically typed language.")
-// []float32{0.0123, -0.0456, 0.0789, ...}
 ```
 
 ### YAML 配置
@@ -83,131 +69,103 @@ ai:
     max_retries: 3
 ```
 
-## 四、Claude
+## 三、LangChainGo
+
+`NewModel` 按 Config 创建 `llms.Model`，另提供 Chain / Agent / Memory / Embedding / VectorStore 辅助函数：
 
 ```go
-import claudePlugin "github.com/tx7do/go-wind-plugins/ai/claude"
+import "github.com/tx7do/go-wind-plugins/ai/langchaingo"
 
-client := claudePlugin.New(
-    claudePlugin.WithAPIKey("sk-ant-xxx"),
-    claudePlugin.WithModel("claude-sonnet-4-6"),
-    claudePlugin.WithMaxTokens(4096),
-)
-```
-
-### YAML 配置
-
-```yaml
-ai:
-  claude:
-    api_key: ${ANTHROPIC_API_KEY}
-    model: claude-sonnet-4-6
-    max_tokens: 4096
-    timeout: 60s
-```
-
-### 特有功能：System Prompt
-
-```go
-resp, _ := client.Chat(ctx, &ai.ChatRequest{
-    System: "You are a code reviewer. Respond with specific feedback.",
-    Messages: []ai.Message{
-        {Role: "user", Content: "Review this function: func foo() {...}"},
+llm, err := langchaingo.NewModel(&langchaingo.Config{
+    Type:           langchaingo.ModelTypeCloud,
+    ModelName:      "gpt-4o",
+    TimeoutSeconds: 60,
+    Cloud: &langchaingo.CloudConfig{
+        ApiKey:  "sk-xxx",
+        BaseUrl: "https://api.openai.com/v1",
     },
+    // Local: &langchaingo.LocalConfig{ ... },  // 本地模型（如 Ollama）
 })
-```
 
-## 五、Ollama（本地模型）
-
-```go
-import ollamaPlugin "github.com/tx7do/go-wind-plugins/ai/ollama"
-
-client := ollamaPlugin.New(
-    ollamaPlugin.WithBaseURL("http://localhost:11434"),
-    ollamaPlugin.WithModel("llama3.2"),
+resp, err := llm.Call(context.Background(),
+    "Explain microservices in one sentence",
 )
+
+// 链式编排
+chain := langchaingo.NewLLMChain(llm, prompt)
+result, _ := chains.Call(context.Background(), chain, map[string]any{"text": "..."})
+
+// Agent
+agent := langchaingo.NewOneShotAgent(llm, agentTools)
+executor := langchaingo.NewExecutor(agent)
 ```
+
+选项支持透传底层 SDK：`WithOpenaiOptions` / `WithOllamaOptions` / `WithHTTPClient`。
 
 ### YAML 配置
 
 ```yaml
 ai:
-  ollama:
-    base_url: "http://localhost:11434"
-    model: llama3.2
-    timeout: 120s
-    options:
-      temperature: 0.7
-      top_p: 0.9
-      num_ctx: 4096
-```
-
-特点：
-- 数据完全本地化，隐私安全
-- 无 API 费用
-- 需要较强的本地 GPU
-
-## 六、Gemini
-
-```go
-import geminiPlugin "github.com/tx7do/go-wind-plugins/ai/gemini"
-
-client := geminiPlugin.New(
-    geminiPlugin.WithAPIKey("AIza-xxx"),
-    geminiPlugin.WithModel("gemini-2.0-flash"),
-)
-```
-
-### YAML 配置
-
-```yaml
-ai:
-  gemini:
-    api_key: ${GEMINI_API_KEY}
-    model: gemini-2.0-flash
-    generation_config:
-      temperature: 0.9
-      top_p: 1.0
-      max_output_tokens: 2048
-```
-
-## 七、多模型路由
-
-```go
-type ModelRouter struct {
-    openai  ai.Client
-    claude  ai.Client
-    local   ai.Client
-}
-
-func (r *ModelRouter) Chat(ctx context.Context, req *ai.ChatRequest) (*ai.ChatResponse, error) {
-    switch req.Model {
-    case "gpt-4":
-        return r.openai.Chat(ctx, req)
-    case "claude":
-        return r.claude.Chat(ctx, req)
-    default:
-        return r.local.Chat(ctx, req)   // fallback to local
-    }
-}
-```
-
-### YAML 配置
-
-```yaml
-ai:
-  default: openai
-  fallback: ollama
-  providers:
-    openai:
+  langchaingo:
+    type: cloud            # local | cloud
+    model: gpt-4o
+    cloud:
       api_key: ${OPENAI_API_KEY}
-      model: gpt-4
-    claude:
-      api_key: ${ANTHROPIC_API_KEY}
-      model: claude-sonnet-4-6
-    ollama:
-      base_url: http://localhost:11434
-      model: llama3.2
+      base_url: "https://api.openai.com/v1"
+```
+
+## 四、Eino
+
+`NewChatModel` 创建 CloudWeGo Eino 的 `model.ChatModel`，并提供 Chain/Graph/Workflow 编排与 Tool 节点辅助函数：
+
+```go
+import "github.com/tx7do/go-wind-plugins/ai/eino"
+
+chatModel, _ := eino.NewChatModel(ctx, &eino.Config{
+    ModelName: "gpt-4o",
+}, eino.WithConfigModifier(func(cfg *einoOpenai.ChatModelConfig) {
+    // cfg 为 eino openai 实现的原生 ChatModelConfig，可自由调整
+    cfg.Temperature = &temp
+}))
+
+// 编排
+chain := eino.NewChain[Input, Output]()
+graph := eino.NewGraph[Input, Output]()
+
+// Tool 节点
+toolNode, _ := eino.NewToolNode(ctx, &compose.ToolsNodeConfig{})
+```
+
+### YAML 配置
+
+```yaml
+ai:
+  eino:
+    model: gpt-4o
+    api_key: ${OPENAI_API_KEY}
+    base_url: "https://api.openai.com/v1"
+```
+
+## 五、多模型路由
+
+插件层不设共享 Client 接口（各 SDK 类型互不兼容）；需要路由时，在业务侧用一个最小接口包装各原生客户端：
+
+```go
+type ChatClient interface {
+    Chat(ctx context.Context, prompt string) (string, error)
+}
+
+type ModelRouter struct {
+    cloud ChatClient   // langchaingo / openai
+    local ChatClient   // 本地模型（Ollama，经 langchaingo ModelTypeLocal）
+}
+
+func (r *ModelRouter) Chat(ctx context.Context, prompt string) (string, error) {
+    if isSensitive(prompt) {
+        return r.local.Chat(ctx, prompt)   // 隐私数据走本地模型
+    }
+    return r.cloud.Chat(ctx, prompt)
+}
 ```
 
 ## 相关文档

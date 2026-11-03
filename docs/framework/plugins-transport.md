@@ -1,18 +1,66 @@
 # 传输协议插件
 
-go-wind-plugins 提供多种传输协议适配器，实现 `transport.Server` 接口。支持 HTTP、gRPC、WebSocket、SSE 等主流协议。
+go-wind-plugins 提供多种传输协议适配器，实现 `transport.Server` 接口。支持 HTTP、gRPC、WebSocket、SSE 等主流协议，并覆盖定时任务、异步任务队列、消息中间件订阅与 MCP 等 31 个传输插件。
 
 ## 一、协议总览
 
-| 协议 | 导入路径 | 类型 | 典型场景 |
+`transport/` 下共 31 个插件目录，按形态分为四组：
+
+**协议与通信**
+
+| 插件 | 导入路径 | 引擎/说明 | 典型场景 |
 |------|---------|------|---------|
-| HTTP | `plugins/transport/http` | 请求-响应 | REST API |
-| gRPC | `plugins/transport/grpc` | 流式 | 内部服务调用 |
-| WebSocket | `plugins/transport/websocket` | 双向流 | 实时通信 |
-| SSE | `plugins/transport/sse` | 服务端推送 | 事件推送 |
-| TCP | `plugins/transport/tcp` | 长连接 | 自定义协议 |
-| KCP | `plugins/transport/kcp` | UDP | 低延迟游戏 |
-| GraphQL | `plugins/transport/graphql` | 查询语言 | 灵活 API |
+| HTTP | `plugins/transport/http` | net/http，另含 chi / gin / fiber 三种驱动 | REST API |
+| HTTP/3 | `plugins/transport/http3` | quic-go/http3 | QUIC 低延迟 Web |
+| gRPC | `plugins/transport/grpc` | google.golang.org/grpc（server/client/middleware） | 内部服务调用 |
+| WebSocket | `plugins/transport/websocket` | gorilla/websocket | 实时通信 |
+| Socket.IO | `plugins/transport/socketio` | googollee/go-socket.io | 实时通信（Socket.IO 协议） |
+| SignalR | `plugins/transport/signalr` | SignalR 协议 | .NET 生态实时通信 |
+| SSE | `plugins/transport/sse` | Server-Sent Events | 服务端事件推送 |
+| TCP | `plugins/transport/tcp` | net.Listener | 自定义协议长连接 |
+| KCP | `plugins/transport/kcp` | xtaci/kcp-go | 低延迟游戏 |
+| WebRTC | `plugins/transport/webrtc` | pion/webrtc v4（SFU） | 音视频实时传输 |
+| WebTransport | `plugins/transport/webtransport` | webtransport-go | HTTP/3 上的双向流 |
+
+**RPC 与查询**
+
+| 插件 | 导入路径 | 引擎/说明 |
+|------|---------|------|
+| GraphQL | `plugins/transport/graphql` | graphql-go |
+| Thrift | `plugins/transport/thrift` | Apache Thrift |
+| tRPC | `plugins/transport/trpc` | tRPC 协议 |
+
+**定时与异步任务**
+
+| 插件 | 导入路径 | 引擎/说明 |
+|------|---------|------|
+| Cron | `plugins/transport/cron` | robfig/cron 定时任务 |
+| HPTimer | `plugins/transport/hptimer` | 高精度定时器 |
+| Asynq | `plugins/transport/asynq` | hibiken/asynq 异步任务队列 |
+| Machinery | `plugins/transport/machinery` | machinery（类 Celery）分布式任务队列 |
+
+**消息中间件订阅型传输**
+
+| 插件 | 导入路径 | 中间件 |
+|------|---------|------|
+| Kafka | `plugins/transport/kafka` | Apache Kafka |
+| RabbitMQ | `plugins/transport/rabbitmq` | RabbitMQ |
+| NATS | `plugins/transport/nats` | NATS |
+| MQTT | `plugins/transport/mqtt` | MQTT |
+| Pulsar | `plugins/transport/pulsar` | Apache Pulsar |
+| RocketMQ | `plugins/transport/rocketmq` | Apache RocketMQ |
+| NSQ | `plugins/transport/nsq` | NSQ |
+| SQS | `plugins/transport/sqs` | AWS SQS |
+| Redis | `plugins/transport/redis` | Redis Pub/Sub |
+| ActiveMQ | `plugins/transport/activemq` | Apache ActiveMQ |
+| Azure Service Bus | `plugins/transport/azuresb` | Azure Service Bus |
+| Google Pub/Sub | `plugins/transport/gcpubsub` | Google Cloud Pub/Sub |
+
+**AI 协议**
+
+| 插件 | 导入路径 | 引擎/说明 |
+|------|---------|------|
+| MCP | `plugins/transport/mcp` | Model Context Protocol（StreamableHTTP / SSE 两种服务形态） |
 
 ## 二、HTTP Server
 
@@ -234,6 +282,10 @@ for _, srv := range app.Servers() {
 // grpc: grpc://0.0.0.0:9090
 // websocket: ws://0.0.0.0:8081/ws
 ```
+
+## 近期更新
+
+- **MCP**（`transport/mcp`）：新增 `WithMCPHTTPServerOptions` / `WithMCPSSEServerOptions`，可透传 StreamableHTTP / SSE 服务选项（如 `WithHTTPContextFunc`），服务形态支持 `ServerTypeHTTP` 与 `ServerTypeSSE` 两种。
 
 ## 相关文档
 

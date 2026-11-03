@@ -1,8 +1,31 @@
 # 插件配置系统
 
-go-wind-plugins 的每个插件都支持多种配置方式：函数式选项、配置文件、环境变量。在 bootstrap 模式下，通过 YAML 声明式配置自动装配。
+go-wind-plugins 的每个插件都支持多种配置方式：函数式选项、配置文件、环境变量。在 bootstrap 模式下，通过 YAML 声明式配置自动装配。配置本身可来自 `config/` 家族的 14 个配置源插件（见下文）。
 
-## 一、配置层级
+## 一、配置源插件（Config）
+
+`config/` 家族实现统一的 `config.Source` 接口，共 14 个插件：
+
+| 插件 | 导入路径 | 引擎 |
+|------|---------|------|
+| Apollo | `plugins/config/apollo` | 携程 Apollo |
+| Consul | `plugins/config/consul` | HashiCorp Consul KV |
+| Etcd | `plugins/config/etcd` | CoreOS etcd |
+| Env | `plugins/config/env` | 环境变量 |
+| File | `plugins/config/file` | 本地文件 |
+| FS | `plugins/config/fs` | fs.FS |
+| HTTP | `plugins/config/http` | HTTP 远程拉取 |
+| Kubernetes | `plugins/config/kubernetes` | K8s ConfigMap / Secret |
+| Nacos | `plugins/config/nacos` | 阿里云 Nacos |
+| OSS | `plugins/config/oss` | 对象存储 |
+| Polaris | `plugins/config/polaris` | 腾讯云 Polaris |
+| Redis | `plugins/config/redis` | Redis KV |
+| Vault | `plugins/config/vault` | HashiCorp Vault |
+| Zookeeper | `plugins/config/zookeeper` | Apache ZooKeeper |
+
+多个配置源可组合使用：`FallbackReader` 按优先级依次尝试多个源，实现多源回退。
+
+## 二、配置层级
 
 ```yaml
 # config.yaml
@@ -34,7 +57,7 @@ broker:
     group_id: "my-service"
 ```
 
-## 二、函数式选项
+## 三、函数式选项
 
 所有插件都提供 `With*` 系列函数式选项：
 
@@ -65,7 +88,7 @@ logger := zapPlugin.NewLogger(
 )
 ```
 
-## 三、Bootstrap 自动装配
+## 四、Bootstrap 自动装配
 
 使用 bootstrap 时，配置文件自动映射到插件选项：
 
@@ -74,20 +97,20 @@ import (
     _ "github.com/tx7do/go-wind-plugins/transport/http"     // blank import
     _ "github.com/tx7do/go-wind-plugins/cache/redis"
     _ "github.com/tx7do/go-wind-plugins/log/zap"
-    _ "github.com/tx7do/go-wind-plugins/database/mysql"
+    _ "github.com/tx7do/go-wind-plugins/crud/gorm"
 )
 
 func main() {
     // bootstrap 自动读取 config.yaml
     // 根据 server.http 配置创建 HTTP Server
     // 根据 cache.redis 配置创建 Redis Client
-    // 根据 database.default 配置创建 Ent Client
+    // 根据 database 配置创建数据访问客户端
     app := bootstrap.New("config.yaml")
     app.Run()
 }
 ```
 
-## 四、配置结构映射
+## 五、配置结构映射
 
 每个插件定义自己的配置结构体：
 
@@ -113,7 +136,7 @@ type CORSConfig struct {
 }
 ```
 
-## 五、环境变量覆盖
+## 六、环境变量覆盖
 
 配置值可通过环境变量覆盖，格式为 `大写_下划线` 连接：
 
@@ -128,7 +151,7 @@ export DATABASE_DEFAULT_DSN="user:pass@tcp(prod-db:3306)/db"
 export CACHE_REDIS_ADDR="prod-redis:6379"
 ```
 
-## 六、多实例配置
+## 七、多实例配置
 
 某些插件支持多实例，通过连接名区分：
 

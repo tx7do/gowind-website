@@ -8,9 +8,9 @@
 
 | 产品        | 体验地址                                     | API 文档                                                                                          | 默认账号              |
 |-----------|------------------------------------------|-------------------------------------------------------------------------------------------------|-------------------|
-| **Admin** | [admin](https://demo.admin.gowind.cloud) | [Swagger](https://api.demo.admin.gowind.cloud/docs/)                                            | `admin` / `admin` |
-| **CMS**   | [admin](https://admin.cms.gowind.cloud)  | [Admin](https://api.admin.cms.gowind.cloud/docs/)、[App](https://api.app.cms.gowind.cloud/docs/) | `admin` / `admin` |
-| **IM**    | [web](https://im.gowind.cloud)           | -                                                                                               | -                 |
+| **Admin** | [react](https://react.admin.gowind.cloud)（另有 [ele](https://ele.admin.gowind.cloud) / [vben](https://vben.admin.gowind.cloud)） | [Swagger](https://api.demo.admin.gowind.cloud/docs/)                                            | `admin` / `Abcd@1234` |
+| **CMS**   | [admin](https://admin.cms.gowind.cloud)  | [Admin](https://api.admin.cms.gowind.cloud/docs/)、[App](https://api.cms.gowind.cloud/docs/) | `admin` / `admin` |
+| **IM**    | [演示站](https://im.gowind.cloud)（[Web 版 IM](https://web.im.gowind.cloud)） | -                                                                                               | -                 |
 | **UBA**   | 敬请期待                                     | -                                                                                               | -                 |
 
 ## 二、选择您的产品

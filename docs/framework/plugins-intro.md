@@ -1,26 +1,33 @@
 # go-wind-plugins 插件总览
 
-go-wind-plugins 是 GoWind 生态中最大的仓库，提供 100+ 个适配器插件，覆盖 8 大领域。所有插件遵循统一的接口契约，通过 SPI 机制自动注册。
+go-wind-plugins 是 GoWind 生态中最大的仓库，以八大领域统一抽象 + 多引擎适配为思路，目前提供 **157 个 go.mod 独立模块**、约 **130+ 个插件**，覆盖 **20+ 领域**。所有插件遵循统一的接口契约，通过 SPI 机制自动注册。
 
-## 一、插件分类
+## 一、插件全景
 
 | 领域 | 核心接口 | 插件数量 | 典型插件 |
 |------|---------|---------|---------|
-| Transport | `transport.Server` | 7+ | HTTP, gRPC, WebSocket, SSE |
-| Log | `log.Logger` | 7+ | Zap, Zerolog, Logrus, Loki |
-| Broker | `broker.Broker` | 10+ | Kafka, RabbitMQ, NATS, Redis |
-| Cache | `cache.Cache` | 5+ | Redis, Memcached, FreeCache |
-| Config | `config.Source` | 6+ | File, Etcd, Consul, Nacos |
-| Registry | `registry.Registry` | 5+ | Consul, Etcd, Nacos, ZooKeeper |
-| Database | `ent.Client` | 8+ | MySQL, PostgreSQL, SQLite, MongoDB |
-| Tracer | `tracer.Tracer` | 3+ | Jaeger, OTLP, Zipkin |
-| OSS | `oss.OSS` | 6+ | MinIO, S3, Aliyun OSS, Qiniu |
-| Metrics | `metrics.Metrics` | 3+ | Prometheus, Datadog |
-| Rate Limit | `ratelimit.Limiter` | 3+ | Token Bucket, Sentinel |
-| Encoding | `encoding.Codec` | 4+ | JSON, Protobuf, YAML, XML |
-| AI | `ai.Client` | 5+ | OpenAI, Claude, Gemini, Ollama |
-| Workflow | `workflow.Engine` | 2+ | Temporal, Celery |
-| Security | `auth.Authenticator` | 4+ | JWT, OAuth2, Casbin |
+| 配置中心 Config | `config.Source` | 14 | Apollo, Consul, Etcd, Nacos, Polaris, Vault, K8s, ZooKeeper, Redis, OSS, HTTP, Env, File, FS |
+| 注册中心 Registry | `registry.Registry` | 8 + 2 | Consul, Etcd, Nacos, ZooKeeper；另含 selector / resolver |
+| 日志 Log | `log.Logger` | 13 | Zap, Zerolog, Logrus, Loki, SLS, CLS, CloudWatch, Sentry |
+| 传输层 Transport | `transport.Server` | 31 | HTTP（4 驱动）, HTTP/3, gRPC, WebSocket, SSE, Socket.IO, SignalR, KCP, WebRTC, WebTransport, GraphQL, Thrift, tRPC, Cron, Asynq, Machinery, MCP 及 12 个 MQ 订阅型插件 |
+| 消息代理 Broker | `broker.Broker` | 12 | Kafka, RabbitMQ, NATS, MQTT, Pulsar, RocketMQ, NSQ, SQS, Redis, STOMP, Azure Service Bus, Google Pub/Sub |
+| 编解码 Encoding | `encoding.Codec` | 12 | JSON, Protobuf, YAML, TOML, MsgPack |
+| CRUD Database | 数据库/ORM 客户端 | 19 | GORM, Ent, MongoDB, ClickHouse, Doris, ES, OpenSearch, InfluxDB, Cassandra；向量/图库 qdrant, milvus, neo4j, weaviate；配套 api/pagination/cache/audit/viewer |
+| 安全 Security | `auth.Authenticator` | 20 | 认证（authn）10 套：JWT, OAuth2 等；鉴权（authz）9 套：Casbin, Cedar, Cerbos, OPA, Zanzibar 等；crypto |
+| 熔断 / 限流 | Breaker / `ratelimit.Limiter` | 4 + 3 | Token Bucket, Sentinel, Hystrix 等 |
+| 工作流 Workflow | `workflow.Engine` | 4 | Temporal, Argo, Conductor, GoWorkflows |
+| 对象存储 OSS | `oss.OSS` | 2 | MinIO, S3 |
+| AI | `ai.Client` | 3 | OpenAI, LangChainGo, Eino |
+| 指标 Metrics | `metrics.Metrics` | 3 | Prometheus, OpenTelemetry, Datadog |
+| 追踪 Tracer | `tracer.Tracer` | 1 | OTLP |
+| 工具 Utils | — | 4 | 通用辅助工具 |
+
+### 近期新增能力
+
+- **selector / resolver** — 客户端负载均衡（selector）与 gRPC 地址解析适配器（resolver），与服务发现注册中心配合使用
+- **transaction** — 本地事务四件套：outbox / saga / tcc / xa
+- **MCP** — 作为传输层插件接入 Model Context Protocol，支持透传 StreamableHTTP/SSE 服务选项
+- **vector 向量库** — 统一 vector 抽象，对接 qdrant / milvus / neo4j / weaviate 四大向量图库
 
 ## 二、目录结构
 
@@ -156,6 +163,11 @@ func init() {
 | 数据管道 | gRPC + ClickHouse + Kafka + Loki |
 | AI 应用 | HTTP + PostgreSQL + OpenAI + Temporal |
 | 边缘/IoT | TCP/KCP + SQLite + FreeCache |
+
+## 近期质量动态
+
+- 完成三轮大规模测试补齐：新增 100+ 测试文件、千余个用例，修复 25+ 个确定性缺陷（含 OPA 插件的数据竞态修复）
+- 仓库内置 `docs/tutorials/` 22 章系列教程，按领域讲解插件使用
 
 ## 相关文档
 

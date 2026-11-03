@@ -1,72 +1,97 @@
 # 消息中间件插件
 
-go-wind-plugins 提供多种消息队列（Broker）适配器，统一 `broker.Broker` 接口，支持发布/订阅模式。
+go-wind-plugins 提供多种消息队列（Broker）适配器，统一 `broker.Broker` 接口，支持发布/订阅模式与 Request/Reply 请求-应答。
 
 ## 一、Broker 接口
 
 ```go
 type Broker interface {
-    Connect(ctx context.Context) error
-    Disconnect(ctx context.Context) error
-    Publish(ctx context.Context, topic string, msg *Message) error
-    Subscribe(ctx context.Context, topic string, handler Handler) (Subscriber, error)
+    Name() string
+    Options() Options
+    Address() string
+
+    Init(...Option) error
+    Connect() error
+    Disconnect() error
+
+    Publish(ctx context.Context, topic string, msg *Message, opts ...PublishOption) error
+    Subscribe(topic string, handler Handler, binder Binder, opts ...SubscribeOption) (Subscriber, error)
+
+    // Request sends a request message and waits for a response
+    Request(ctx context.Context, topic string, msg *Message, opts ...RequestOption) (*Message, error)
 }
 
 type Message struct {
-    Headers map[string]string
-    Body    []byte
+    ID      string
+    Headers Headers          // map[string]string
+    Body    any              // 经 WithCodec 注册的编解码器序列化
+    Key     string           // Kafka Key / RocketMQ Key / RabbitMQ RoutingKey...
+    Metadata Metadata
 }
 ```
 
+除原生 `Subscribe` 外，还提供泛型订阅助手 `broker.Subscribe[T]`（自动反序列化 payload）、泛型 `TypedHandler`，以及发布/订阅中间件链（`WithPublishMiddlewares` / `WithSubscriberMiddlewares`）。
+
 ## 二、适配器列表
 
-| 适配器 | 导入路径 | 特点 |
+| 适配器 | 导入路径 | 引擎 |
 |--------|---------|------|
-| Kafka | `plugins/broker/kafka` | 高吞吐、分区有序、消费者组 |
-| RabbitMQ | `plugins/broker/rabbitmq` | 路由灵活、ACK 确认 |
-| NATS | `plugins/broker/nats` | 轻量、低延迟 |
-| Redis | `plugins/broker/redis` | 简单、无额外依赖 |
-| Pulsar | `plugins/broker/pulsar` | 多租户、持久化 |
-| RocketMQ | `plugins/broker/rocketmq` | 阿里系、事务消息 |
-| NSQ | `plugins/broker/nsq` | 去中心化、无 SPOF |
-| MQTT | `plugins/broker/mqtt` | IoT 协议、轻量 |
+| Kafka | `plugins/broker/kafka` | segmentio/kafka-go |
+| RabbitMQ | `plugins/broker/rabbitmq` | rabbitmq/amqp091-go |
+| NATS | `plugins/broker/nats` | nats-io/nats.go（JetStream） |
+| MQTT | `plugins/broker/mqtt` | eclipse/paho.mqtt.golang |
+| Pulsar | `plugins/broker/pulsar` | apache/pulsar-client-go |
+| Redis | `plugins/broker/redis` | gomodule/redigo |
+| RocketMQ | `plugins/broker/rocketmq` | apache/rocketmq-client-go + rocketmq-clients |
+| NSQ | `plugins/broker/nsq` | nsqio/go-nsq |
+| SQS | `plugins/broker/sqs` | aws/aws-sdk-go-v2 |
+| GCP Pub/Sub | `plugins/broker/gcpubsub` | cloud.google.com/go/pubsub |
+| Azure Service Bus | `plugins/broker/azuresb` | azure-sdk-for-go |
+| STOMP | `plugins/broker/stomp` | go-stomp/stomp |
+
+各引擎 SDK 差异较大，每个子模块独立定义配置选项，但均实现核心 `broker.Broker` 接口；通用选项（`WithAddress` / `WithCodec` / `WithTLSConfig` / `WithTracerProvider` / 中间件等）由家族统一提供。
 
 ## 三、Kafka
 
 ```go
-import kafkaPlugin "github.com/tx7do/go-wind-plugins/broker/kafka"
-
-broker := kafkaPlugin.NewBroker(
-    kafkaPlugin.WithAddrs("localhost:9092"),
-    kafkaPlugin.WithGroupID("my-service"),
-    kafkaPlugin.WithVersion("3.0.0"),
+import (
+    "github.com/tx7do/go-wind-plugins/broker"
+    kafkaPlugin "github.com/tx7do/go-wind-plugins/broker/kafka"
 )
+
+b := kafkaPlugin.NewBroker(
+    broker.WithAddress("localhost:9092"),
+    broker.WithCodec("json"),
+)
+
+_ = b.Init()
+_ = b.Connect()
+defer b.Disconnect()
 ```
 
 ### 发布消息
 
 ```go
-msg := &broker.Message{
-    Headers: map[string]string{
+msg := broker.NewMessage(
+    map[string]any{"event": "user_login", "user_id": "123"},
+    broker.WithPublishHeaders(map[string]string{
         "trace_id": traceID,
-    },
-    Body: []byte(`{"event":"user_login","user_id":"123"}`),
-}
+    }),
+)
 
-broker.Publish(ctx, "user-events", msg)
+b.Publish(ctx, "user-events", msg)
 ```
 
 ### 订阅消息
 
 ```go
-sub, _ := broker.Subscribe(ctx, "user-events", func(ctx context.Context, msg *broker.Message) error {
-    var event UserEvent
-    json.Unmarshal(msg.Body, &event)
-    processEvent(event)
-    return nil  // 返回 nil 自动 ACK
-})
-
-defer sub.Unsubscribe()
+sub, _ := b.Subscribe("user-events",
+    func(ctx context.Context, event broker.Event) error {
+        fmt.Println(event.Topic(), event.Message().Body)
+        return nil  // 返回 nil 自动 ACK
+    },
+    func() any { return &map[string]any{} },  // Binder
+)
 ```
 
 ### YAML 配置
@@ -94,14 +119,17 @@ broker:
 ## 四、RabbitMQ
 
 ```go
-import rabbitmqPlugin "github.com/tx7do/go-wind-plugins/broker/rabbitmq"
+import (
+    "github.com/tx7do/go-wind-plugins/broker"
+    rabbitmqPlugin "github.com/tx7do/go-wind-plugins/broker/rabbitmq"
+)
 
-broker := rabbitmqPlugin.NewBroker(
-    rabbitmqPlugin.WithAddrs("amqp://guest:guest@localhost:5672/"),
-    rabbitmqPlugin.WithExchange("events"),
+b := rabbitmqPlugin.NewBroker(
+    broker.WithAddress("amqp://guest:guest@localhost:5672/"),
+    rabbitmqPlugin.WithExchangeName("events"),
     rabbitmqPlugin.WithExchangeType("topic"),
-    rabbitmqPlugin.WithDurable(true),
-    rabbitmqPlugin.WithQoS(10),       // prefetch count
+    rabbitmqPlugin.WithDurableExchange(),
+    rabbitmqPlugin.WithPrefetchCount(10),   // prefetch count
 )
 ```
 
@@ -127,11 +155,23 @@ broker:
 ## 五、NATS
 
 ```go
-import natsPlugin "github.com/tx7do/go-wind-plugins/broker/nats"
+import (
+    "github.com/tx7do/go-wind-plugins/broker"
+    natsPlugin "github.com/tx7do/go-wind-plugins/broker/nats"
+)
 
-broker := natsPlugin.NewBroker(
-    natsPlugin.WithAddrs("nats://localhost:4222"),
-    natsPlugin.WithJetStream(true),
+b := natsPlugin.NewBroker(
+    broker.WithAddress("nats://localhost:4222"),
+    broker.WithCodec("json"),
+)
+
+// JetStream 订阅：声明 Durable 与投递策略
+sub, _ := b.Subscribe("events",
+    handler,
+    binder,
+    broker.WithSubscribeQueueName("my-service"),
+    natsPlugin.WithDurable("my-durable"),
+    natsPlugin.WithDeliverAll(),
 )
 ```
 
@@ -150,11 +190,21 @@ broker:
 ## 六、Redis Pub/Sub
 
 ```go
-import redisBrokerPlugin "github.com/tx7do/go-wind-plugins/broker/redis"
+import (
+    "github.com/tx7do/go-wind-plugins/broker"
+    redisBrokerPlugin "github.com/tx7do/go-wind-plugins/broker/redis"
+)
 
-broker := redisBrokerPlugin.NewBroker(
-    redisBrokerPlugin.WithAddr("localhost:6379"),
-    redisBrokerPlugin.WithChannels("events", "notifications"),
+b := redisBrokerPlugin.NewBroker(
+    broker.WithAddress("localhost:6379"),
+    broker.WithCodec("json"),
+    redisBrokerPlugin.WithPassword("pass"),
+)
+
+// Streams 消费组（可选）
+_ = b.Subscribe("events", handler, binder,
+    redisBrokerPlugin.WithStreamGroup("my-group"),
+    redisBrokerPlugin.WithStreamConsumer("consumer-1"),
 )
 ```
 
@@ -182,6 +232,8 @@ broker:
 | IoT 设备消息 | MQTT（轻量、QoS） |
 | 金融/事务消息 | RocketMQ（事务消息） |
 | 大规模流处理 | Pulsar（多租户） |
+| 云上托管队列 | SQS / GCP Pub/Sub / Azure Service Bus |
+| 企业消息总线对接 | STOMP |
 
 ## 八、多 Broker 组合
 

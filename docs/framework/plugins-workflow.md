@@ -1,111 +1,60 @@
 # 工作流插件
 
-go-wind-plugins 提供统一的工作流引擎接口，支持 Temporal、Celery 等。
+go-wind-plugins 提供统一的工作流引擎接入，支持 Temporal、Argo Workflows、Conductor、GoWorkflows 四个引擎；异步任务队列 Asynq 归属传输层（`transport/asynq`）。
 
-## 一、Engine 接口
+## 一、Client 接口
+
+四个引擎的工作流操作参数/返回值类型互不兼容，仅提取最小公共接口 `workflow.Client`：
 
 ```go
-type Engine interface {
-    Start(ctx context.Context) error
-    Stop(ctx context.Context) error
-    Submit(ctx context.Context, task *Task) (TaskID, error)
-    GetResult(ctx context.Context, id TaskID) (*Result, error)
-    Cancel(ctx context.Context, id TaskID) error
+type Client interface {
+    // Close releases the client connection and cleans up resources.
+    Close() error
+}
+
+type Worker interface {
+    // Stop signals the worker to stop polling for tasks.
+    Stop()
+    // IsRunning returns whether the worker is still active.
+    IsRunning() bool
 }
 ```
+
+启动、取消、信号等引擎特定操作以具体类型的方法暴露。
 
 ## 二、适配器列表
 
-| 适配器 | 导入路径 | 特点 |
+| 适配器 | 导入路径 | 框架 |
 |--------|---------|------|
-| Asynq | `plugins/workflow/asynq` | Redis 队列任务、轻量 |
-| Temporal | `plugins/workflow/temporal` | 长流程编排、状态持久化 |
+| Temporal | `plugins/workflow/temporal` | temporal.io/sdk（长流程编排、状态持久化） |
+| Argo Workflows | `plugins/workflow/argo` | Argo Workflows REST API |
+| Conductor | `plugins/workflow/conductor` | conductor-sdk/conductor-go |
+| GoWorkflows | `plugins/workflow/goworkflows` | cschleiden/go-workflows |
 
-## 三、Asynq（推荐轻量场景）
+## 三、Asynq（异步任务队列，已归属 transport）
+
+Asynq 不在 `workflow/` 下，而是作为传输层插件提供（`transport/asynq`），面向 Redis 任务队列的轻量异步任务场景：
 
 ```go
-import asynqPlugin "github.com/tx7do/go-wind-plugins/workflow/asynq"
+import asynqPlugin "github.com/tx7do/go-wind-plugins/transport/asynq"
 
-engine := asynqPlugin.New(
-    asynqPlugin.WithAddr("localhost:6379"),
+srv := asynqPlugin.NewServer(
+    asynqPlugin.WithRedisAddress("127.0.0.1:6379"),
     asynqPlugin.WithConcurrency(10),
-    asynqPlugin.WithQueues(
-        asynqPlugin.Queue{Name: "critical", Priority: 6},
-        asynqPlugin.Queue{Name: "default", Priority: 3},
-        asynqPlugin.Queue{Name: "low", Priority: 1},
-    ),
+    asynqPlugin.WithCodec("json"),
 )
-```
 
-### 定义任务
+// 注册任务 Handler（泛型，自动反序列化 payload）
+_ = asynqPlugin.RegisterSubscriber[emailPayload](
+    srv, "email:send",
+    func(taskType string, msg *emailPayload) error {
+        return sendEmail(msg.To, msg.Subject, msg.Body)
+    },
+)
 
-```go
-type EmailTask struct {
-    To      string
-    Subject string
-    Body    string
-}
-
-func HandleEmailTask(ctx context.Context, task *asynqPlugin.Task) error {
-    var payload EmailTask
-    json.Unmarshal(task.Payload, &payload)
-    return sendEmail(payload.To, payload.Subject, payload.Body)
-}
-
-// 注册 Handler
-engine.Register("send:email", HandleEmailTask)
-```
-
-### 提交任务
-
-```go
-payload, _ := json.Marshal(EmailTask{
-    To: "user@example.com",
-    Subject: "Welcome",
-    Body: "Welcome to GoWind!",
-})
-
-taskID, _ := engine.Submit(ctx, &workflow.Task{
-    Type:    "send:email",
-    Payload: payload,
-    Queue:   "default",
-    Delay:   5 * time.Minute,    // 延迟执行
-    MaxRetry: 3,
-    Timeout:  30 * time.Second,
-})
-```
-
-### 定时任务
-
-```go
-// Cron 表达式
-engine.Schedule("0 9 * * *", &workflow.Task{
-    Type: "daily:report",
-    Payload: reportPayload,
-})
-```
-
-### YAML 配置
-
-```yaml
-workflow:
-  asynq:
-    addr: "localhost:6379"
-    db: 0
-    concurrency: 10
-    queues:
-      - name: critical
-        priority: 6
-      - name: default
-        priority: 3
-      - name: low
-        priority: 1
-    retry:
-      max_attempts: 5
-      max_duration: 24h
-    monitor:
-      enabled: true
-      addr: ":8090"     # Asynqmon UI
+// 提交任务 / 定时任务
+_, _ = srv.NewTask("email:send", &emailPayload{})
+_, _ = srv.NewPeriodicTask("0 9 * * *", "email:send", &emailPayload{})
 ```
 
 ## 四、Temporal（推荐复杂编排）
@@ -113,11 +62,13 @@ workflow:
 ```go
 import temporalPlugin "github.com/tx7do/go-wind-plugins/workflow/temporal"
 
-client, _ := temporalPlugin.New(
-    temporalPlugin.WithHostPort("localhost:7233"),
-    temporalPlugin.WithNamespace("default"),
-    temporalPlugin.WithTaskQueue("my-queue"),
+client, _ := temporalPlugin.NewClient(
+    temporalPlugin.WithClientHostPort("localhost:7233"),
+    temporalPlugin.WithClientNamespace("default"),
 )
+defer client.Close()
+
+client.WithTracing() // 原生 OTel 追踪
 ```
 
 ### 定义工作流
@@ -142,26 +93,30 @@ func OrderWorkflow(ctx workflow.Context, order Order) error {
 }
 ```
 
-### 注册并启动
+### 注册并启动 Worker
 
 ```go
-worker := temporalPlugin.NewWorker(client, "my-queue")
-worker.RegisterWorkflow(OrderWorkflow)
-worker.RegisterActivity(DeductInventoryActivity)
-worker.RegisterActivity(PaymentActivity)
-worker.RegisterActivity(SendConfirmationActivity)
-
+worker, _ := client.NewWorker(temporalPlugin.WorkerOptions{
+    TaskQueue:  "my-queue",
+    Workflows:  []any{OrderWorkflow},
+    Activities: []any{DeductInventoryActivity, PaymentActivity, SendConfirmationActivity},
+})
 worker.Start(ctx)
 ```
 
 ### 触发工作流
 
 ```go
-workflowID := "order-" + uuid.New().String()
-client.ExecuteWorkflow(ctx, temporalPlugin.StartWorkflowOptions{
-    ID:        workflowID,
+// Execute 返回 workflowID，ExecuteSync 同步等待结果
+workflowID, _ := client.Execute(ctx, order, temporalPlugin.ExecuteOptions{
+    ID:        "order-" + uuid.New().String(),
     TaskQueue: "my-queue",
-}, OrderWorkflow, order)
+})
+
+// 信号 / 查询 / 取消 / 描述
+client.Signal(ctx, workflowID, runID, "approve", nil)
+result, _ := client.Query(ctx, workflowID, runID, "state", nil)
+client.Cancel(ctx, workflowID, runID)
 ```
 
 ### YAML 配置
@@ -177,16 +132,37 @@ workflow:
       max_concurrent_workflows: 5
 ```
 
-## 五、选择指南
+## 五、Argo / Conductor / GoWorkflows
+
+| 引擎 | 创建客户端 | 主要操作 |
+|------|-----------|---------|
+| Argo | `argo.NewClient(ClientOptions)` | Submit / Get / Suspend / Resume / Terminate（REST API） |
+| Conductor | `conductor.NewClient(ClientOptions)` / `NewClientFromEnv(...)` | Start / Get / Pause / Resume / Terminate，支持任务 Worker |
+| GoWorkflows | `goworkflows.NewClient(backend.Backend)` | Create / Cancel / Signal / Wait，支持 Workflow + Activity Worker |
+
+```go
+// Argo：提交工作流（REST 对接 Argo Workflows）
+argoClient, _ := argo.NewClient(argo.ClientOptions{ /* ... */ })
+wf, _ := argoClient.SubmitWorkflow(ctx, wfSpec, opts)
+
+// Conductor：启动工作流
+runID, _ := conductorClient.StartWorkflow(ctx, conductor.StartWorkflowOptions{ /* ... */ })
+
+// GoWorkflows：创建工作流实例
+instance, _ := goworkflowsClient.CreateWorkflowInstance(ctx, opts, OrderWorkflow, order)
+```
+
+## 六、选择指南
 
 | 场景 | 推荐 | 理由 |
 |------|------|------|
-| 异步任务 | Asynq | 轻量、Redis 即可 |
-| 定时 Cron | Asynq | 内置 Cron 调度 |
+| 异步任务 | Asynq（transport） | 轻量、Redis 即可 |
+| 定时 Cron | Cron（transport） | robfig/cron 表达式调度 |
 | 订单流程 | Temporal | 状态持久化、补偿回滚 |
 | 审批流程 | Temporal | 多步骤、长时间运行 |
-| 批量处理 | Asynq | 优先级队列 |
-| 跨服务工作流 | Temporal | 全局编排 |
+| 批量处理 | Asynq（transport） | 优先级队列 |
+| 跨服务工作流 | Temporal / Conductor | 全局编排 |
+| K8s 批处理 | Argo | 原生 Kubernetes CRD 生态 |
 
 ## 相关文档
 

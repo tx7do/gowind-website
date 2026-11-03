@@ -14,22 +14,29 @@ type Codec interface {
 
 ## 二、内置编码
 
-| 编码 | 导入路径 | Content-Type |
-|------|---------|-------------|
-| JSON | `plugins/encoding/json` | `application/json` |
-| Protobuf | `plugins/encoding/protobuf` | `application/protobuf` |
-| YAML | `plugins/encoding/yaml` | `application/yaml` |
-| XML | `plugins/encoding/xml` | `application/xml` |
-| MessagePack | `plugins/encoding/msgpack` | `application/msgpack` |
-| TOML | `plugins/encoding/toml` | `application/toml` |
-| Gob | `plugins/encoding/gob` | `application/gob` |
+共 12 个编解码插件：
+
+| 编码 | 导入路径 | 引擎 |
+|------|---------|------|
+| JSON | `plugins/encoding/json` | encoding/json |
+| Protobuf | `plugins/encoding/proto` | google.golang.org/protobuf |
+| YAML | `plugins/encoding/yaml` | gopkg.in/yaml.v3 |
+| TOML | `plugins/encoding/toml` | pelletier/go-toml |
+| XML | `plugins/encoding/xml` | encoding/xml |
+| MessagePack | `plugins/encoding/msgpack` | vmihailenco/msgpack |
+| Avro | `plugins/encoding/avro` | linkedin/goavro |
+| BSON | `plugins/encoding/bson` | go.mongodb.org/mongo-driver |
+| CBOR | `plugins/encoding/cbor` | fxamacker/cbor |
+| FlatBuffers | `plugins/encoding/flatbuffers` | google/flatbuffers |
+| Gob | `plugins/encoding/gob` | encoding/gob |
+| Thrift | `plugins/encoding/thrift` | Apache Thrift |
 
 ## 三、注册 Codec
 
 ```go
 import (
     _ "github.com/tx7do/go-wind-plugins/encoding/json"
-    _ "github.com/tx7do/go-wind-plugins/encoding/protobuf"
+    _ "github.com/tx7do/go-wind-plugins/encoding/proto"
 )
 
 // init() 自动注册到全局 Codec 注册表
@@ -40,7 +47,7 @@ import (
 ### 4.1 编解码
 
 ```go
-import "github.com/tx7do/go-wind/encoding"
+import "github.com/tx7do/go-wind-plugins/encoding"
 
 // 获取 codec
 jsonCodec := encoding.GetCodec("json")
@@ -77,7 +84,7 @@ msg := &broker.Message{
 ```go
 package mycodec
 
-import "github.com/tx7do/go-wind/encoding"
+import "github.com/tx7do/go-wind-plugins/encoding"
 
 type Codec struct{}
 
@@ -94,7 +101,8 @@ func (c *Codec) Unmarshal(data []byte, v interface{}) error {
 func (c *Codec) Name() string { return "my-format" }
 
 func init() {
-    encoding.RegisterCodec("my-format", &Codec{})
+    // 注册表按 Name()（大小写不敏感）登记
+    encoding.RegisterCodec(&Codec{})
 }
 ```
 

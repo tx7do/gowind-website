@@ -1,6 +1,17 @@
 # Bootstrap 集成与网关插件
 
-go-wind-plugins 还提供网关、远程调用等高级插件，与 Bootstrap 深度集成。
+::: warning 家族现状说明（以仓库为准）
+go-wind-plugins 仓库中**已无 `gateway/` 插件家族**（无对应目录、模块与 README 矩阵条目），下文「API 网关」「Webhook 回调」描述的能力在仓库现状中没有对应实现，去向无官方说明，请以仓库现状为准。
+
+仓库现状中可对应的能力：
+
+- **gRPC 服务客户端**：由 `transport/grpc/client` 模块提供（见 2.1 节，已按现状更新）；
+- **健康检查**：顶层 `health/` 模块提供 HTTP 健康检查端点（见第三节）；
+- **定时任务**：`transport/cron`（robfig/cron）；
+- **负载均衡**：顶层 `selector/` 模块（RoundRobin/Random/First + Watch Balancer）。
+:::
+
+go-wind-plugins 还提供服务客户端、健康检查等高级插件，与 Bootstrap 深度集成。
 
 ## 一、API 网关
 
@@ -56,21 +67,28 @@ gateway:
 
 ### 2.1 gRPC 客户端
 
-```go
-import grpcClientPlugin "github.com/tx7do/go-wind-plugins/client/grpc"
+gRPC 客户端封装位于 `transport/grpc/client`：
 
-conn, _ := grpcClientPlugin.New(
-    grpcClientPlugin.WithTarget("consul://user-service"),
-    grpcClientPlugin.WithBalancer("round_robin"),
-    grpcClientPlugin.WithTimeout(5*time.Second),
-    grpcClientPlugin.WithInterceptor(retryInterceptor),
+```go
+import grpcClientPlugin "github.com/tx7do/go-wind-plugins/transport/grpc/client"
+
+conn := grpcClientPlugin.NewClient("user-service",
+    grpcClientPlugin.WithInsecure(),                     // 或 WithTransportCredentials(creds)
+    grpcClientPlugin.WithDialOption(grpc.WithResolvers(resolver)),
+    grpcClientPlugin.WithMiddleware(retryMiddleware),
 )
 
 userClient := pb.NewUserServiceClient(conn)
 resp, _ := userClient.GetUser(ctx, &pb.GetUserRequest{Id: "123"})
 ```
 
+配合顶层 `resolver/` 模块可实现按注册中心寻址：`grpc.NewClient("wind:///svc", grpc.WithResolvers(...))`。
+
 ### 2.2 HTTP 客户端
+
+::: warning
+仓库现状中没有独立的 HTTP 服务客户端模块（`client/http` 不存在）。
+:::
 
 ```go
 import httpClientPlugin "github.com/tx7do/go-wind-plugins/client/http"

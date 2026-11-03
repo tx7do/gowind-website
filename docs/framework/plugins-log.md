@@ -1,18 +1,26 @@
 # 日志适配插件
 
-go-wind-plugins 提供多种日志适配器，实现 `log.Logger` 接口。导入即用，无需手动调用 `log.SetLogger`。
+go-wind-plugins 提供多种日志适配器，实现 `log.Logger` 接口。适配器包装各日志引擎的原生 Logger，业务代码统一走 `log.Logger` 门面。
 
 ## 一、适配器列表
 
-| 适配器 | 导入路径 | 特点 |
+| 适配器 | 导入路径 | 引擎 |
 |--------|---------|------|
-| Zap | `plugins/log/zap` | 高性能结构化日志， Uber 开源 |
-| Zerolog | `plugins/log/zerolog` | 零分配 JSON 日志 |
-| Logrus | `plugins/log/logrus` | 社区流行，生态丰富 |
-| Loki | `plugins/log/loki` | Grafana Loki 远程日志聚合 |
-| Sentry | `plugins/log/sentry` | Sentry 错误追踪集成 |
+| Zap | `plugins/log/zap` | uber-go/zap |
+| Zerolog | `plugins/log/zerolog` | rs/zerolog |
+| Logrus | `plugins/log/logrus` | sirupsen/logrus |
+| Phuslu | `plugins/log/phuslu` | phuslu/log |
+| Charm | `plugins/log/charm` | charmbracelet/log |
+| Glog | `plugins/log/glog` | golang/glog |
+| Hclog | `plugins/log/hclog` | hashicorp/go-hclog |
+| Loki | `plugins/log/loki` | Grafana Loki |
+| Fluent | `plugins/log/fluent` | Fluentd |
+| Sentry | `plugins/log/sentry` | getsentry/sentry-go |
 | CloudWatch | `plugins/log/cloudwatch` | AWS CloudWatch Logs |
-| Aliyun SLS | `plugins/log/aliyun_sls` | 阿里云日志服务 |
+| Aliyun SLS | `plugins/log/aliyun` | 阿里云日志服务 SLS |
+| Tencent CLS | `plugins/log/tencent` | 腾讯云日志服务 CLS |
+
+`log/` 根包还内置：**slog 适配器**（默认 Logger）、**LevelFilter** 日志级别过滤器、**MultiLogger** 多路日志器（一条日志同时写多个后端）。
 
 ## 二、Zap 适配器
 
@@ -20,32 +28,22 @@ go-wind-plugins 提供多种日志适配器，实现 `log.Logger` 接口。导�
 
 ```go
 import (
-    _ "github.com/tx7do/go-wind-plugins/log/zap"
+    "context"
+
+    zap "go.uber.org/zap"
+    zaplog "github.com/tx7do/go-wind-plugins/log/zap"
 )
 
-// init() 自动注册为全局 Logger
-// 直接使用 log 包即可
-log.Info("service started", log.String("addr", ":8080"))
-log.Error("connection failed", log.Err(err))
+// 先构建原生 zap.Logger，再包装为统一的 log.Logger
+zlog, _ := zap.NewProduction()
+logger := zaplog.NewZapLogger(zlog)
+defer logger.Close()
+
+logger.Info(context.Background(), "service started", "port", 8080)
+logger.With("module", "auth").Error(context.Background(), "token expired")
 ```
 
-### 2.2 手动配置
-
-```go
-import zapPlugin "github.com/tx7do/go-wind-plugins/log/zap"
-
-logger := zapPlugin.NewLogger(
-    zapPlugin.WithLevel("debug"),
-    zapPlugin.WithFormat("json"),        // json | console
-    zapPlugin.WithOutput("stdout"),      // stdout | stderr | file path
-    zapPlugin.WithFileName("app.log"),
-    zapPlugin.WithMaxSize(100),          // MB
-    zapPlugin.WithMaxBackups(7),
-    zapPlugin.WithMaxAge(30),            // days
-    zapPlugin.WithCompress(true),
-)
-log.SetLogger(logger)
-```
+### 2.2 YAML 配置（bootstrap 装配）
 
 ### 2.3 YAML 配置
 
@@ -169,21 +167,29 @@ log:
     batch_timeout: 5s
 ```
 
-## 八、Aliyun SLS
+## 八、Aliyun SLS 与腾讯云 CLS
 
 ```go
-import _ "github.com/tx7do/go-wind-plugins/log/aliyun_sls"
+import _ "github.com/tx7do/go-wind-plugins/log/aliyun"   // 阿里云 SLS
+import _ "github.com/tx7do/go-wind-plugins/log/tencent"  // 腾讯云 CLS
 ```
 
 ```yaml
 log:
-  aliyun_sls:
+  aliyun:
     level: info
     endpoint: "cn-hangzhou.log.aliyuncs.com"
     project: my-project
     logstore: app-logs
     access_key_id: ${ALIYUN_AK}
     access_key_secret: ${ALIYUN_SK}
+
+  tencent:
+    level: info
+    endpoint: "ap-guangzhou.cls.tencentcs.com"
+    topic_id: my-topic-id
+    secret_id: ${TENCENT_SECRET_ID}
+    secret_key: ${TENCENT_SECRET_KEY}
 ```
 
 ## 九、性能对比

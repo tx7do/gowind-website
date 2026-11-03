@@ -70,17 +70,17 @@ func init() {
 }
 ```
 
-### 3.3 MySQL Database
+### 3.3 数据访问客户端（GORM）
 
 ```go
-// plugins/database/mysql/register.go
-package mysql
+// plugins/crud/gorm/register.go
+package gorm
 
 import "github.com/tx7do/go-wind-bootstrap/registry"
 
 func init() {
-    registry.RegisterDatabase("mysql", func(opts ...Option) (*ent.Client, error) {
-        return NewClient(opts...)
+    registry.RegisterDatabase("gorm", func(opts ...Option) (*Repository[any, any], error) {
+        return NewRepository(opts...)
     })
 }
 ```
@@ -101,7 +101,7 @@ import (
     _ "github.com/tx7do/go-wind-plugins/log/zap"
 
     // Database
-    _ "github.com/tx7do/go-wind-plugins/database/mysql"
+    _ "github.com/tx7do/go-wind-plugins/crud/gorm"
 
     // Cache
     _ "github.com/tx7do/go-wind-plugins/cache/redis"
@@ -172,7 +172,7 @@ import _ "myproject/plugins/mycache"
 |--------------|---------|---------|
 | `RegisterTransport` | Transport Server | `server.*` |
 | `RegisterLog` | Logger | `log.*` |
-| `RegisterDatabase` | Ent Client | `database.*` |
+| `RegisterDatabase` | 数据访问客户端 | `database.*` |
 | `RegisterCache` | Cache | `cache.*` |
 | `RegisterBroker` | Broker | `broker.*` |
 | `RegisterConfig` | Config Source | `config.*` |
@@ -181,6 +181,28 @@ import _ "myproject/plugins/mycache"
 | `RegisterOSS` | Object Storage | `oss.*` |
 | `RegisterMetrics` | Metrics | `metrics.*` |
 | `RegisterAuth` | Authenticator | `auth.*` |
+
+## 八、服务注册发现插件（Registry）
+
+注意区分两个概念：本页上文的「注册机制」指插件的 SPI 自动装配；这一节说的是**服务注册发现**插件家族（`registry/`），实现 `registry.Registry`（Registrar / Discovery / Watcher）接口，共 8 个插件：
+
+| 插件 | 导入路径 | 引擎 |
+|------|---------|------|
+| Consul | `plugins/registry/consul` | HashiCorp Consul |
+| Etcd | `plugins/registry/etcd` | CoreOS etcd |
+| Eureka | `plugins/registry/eureka` | Netflix Eureka |
+| Kubernetes | `plugins/registry/kubernetes` | K8s Endpoints |
+| Nacos | `plugins/registry/nacos` | 阿里云 Nacos |
+| Polaris | `plugins/registry/polaris` | 腾讯云 Polaris |
+| ServiceComb | `plugins/registry/servicecomb` | Apache ServiceComb |
+| Zookeeper | `plugins/registry/zookeeper` | Apache ZooKeeper |
+
+**selector / resolver 的归属**：`selector`（客户端负载均衡策略 RoundRobin/Random/First + 基于 Watch 的实时 Balancer）与 `resolver`（gRPC `resolver.Builder`，支持 `grpc.NewClient("wind:///svc", grpc.WithResolvers(...))` 按注册中心寻址）是仓库顶层的两个独立模块，**不属于 registry 家族**，但与服务注册发现配合使用：Discovery 提供实例列表，selector 负责挑一个，resolver 把它接入 gRPC 寻址。
+
+## 近期更新
+
+- **etcd**（`registry/etcd`）：心跳改用 registry 级长生命周期 context 驱动，租约过期后**永不放弃重注册**（重试突发间隔 30s 冷却），不再因瞬时故障永久丢失注册。
+- **eureka**（`registry/eureka`）：新增 `MaxRetry` 客户端选项，可配置对 Eureka Server 的请求重试次数。
 
 ## 相关文档
 

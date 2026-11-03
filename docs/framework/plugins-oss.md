@@ -1,43 +1,27 @@
 # 对象存储插件（OSS）
 
-go-wind-plugins 提供统一的 S3 兼容对象存储接口，支持 MinIO、AWS S3、阿里云 OSS 等。
+go-wind-plugins 提供对象存储适配器，覆盖 MinIO 与 AWS S3。两个实现的底层 SDK 和返回类型不兼容，因此各自定义本地 `Config`，不提取共享接口。
 
-## 一、OSS 接口
+## 一、插件列表
 
-```go
-type OSS interface {
-    Upload(ctx context.Context, bucket, key string, reader io.Reader, opts ...UploadOption) error
-    Download(ctx context.Context, bucket, key string) (io.ReadCloser, error)
-    Delete(ctx context.Context, bucket, key string) error
-    Exists(ctx context.Context, bucket, key string) (bool, error)
-    GetURL(ctx context.Context, bucket, key string, expiry time.Duration) (string, error)
-    List(ctx context.Context, bucket, prefix string) ([]ObjectInfo, error)
-}
-```
+| 插件 | 导入路径 | 框架 |
+|------|---------|------|
+| MinIO | `plugins/oss/minio` | minio/minio-go（兼容各类 S3 兼容存储） |
+| S3 | `plugins/oss/s3` | aws/aws-sdk-go-v2 |
 
-## 二、适配器列表
-
-| 适配器 | 导入路径 | 后端 |
-|--------|---------|------|
-| MinIO | `plugins/oss/minio` | 自建 MinIO（S3 兼容） |
-| S3 | `plugins/oss/s3` | AWS S3 |
-| Aliyun OSS | `plugins/oss/aliyun` | 阿里云 OSS |
-| Qiniu | `plugins/oss/qiniu` | 七牛云 |
-| Tencent COS | `plugins/oss/tencent` | 腾讯云 COS |
-| GCS | `plugins/oss/gcs` | Google Cloud Storage |
-
-## 三、MinIO
+## 二、MinIO
 
 ```go
-import minioPlugin "github.com/tx7do/go-wind-plugins/oss/minio"
+import "github.com/tx7do/go-wind-plugins/oss/minio"
 
-client, _ := minioPlugin.New(
-    minioPlugin.WithEndpoint("localhost:9000"),
-    minioPlugin.WithAccessKey("minioadmin"),
-    minioPlugin.WithSecretKey("minioadmin"),
-    minioPlugin.WithSecure(false),
-    minioPlugin.WithRegion("us-east-1"),
-)
+storage := minio.NewStorage(&minio.Config{
+    Endpoint:  "127.0.0.1:9000",
+    AccessKey: "your-access-key",
+    SecretKey: "your-secret-key",
+    UseSsl:    false,
+    // Region:         "us-east-1",   // 部分 S3 兼容存储签名 v4 必需
+    // ForcePathStyle: true,          // path-style 寻址（兼容部分 S3 实现）
+})
 ```
 
 ### 上传文件
@@ -46,29 +30,24 @@ client, _ := minioPlugin.New(
 file, _ := os.Open("photo.jpg")
 defer file.Close()
 
-err := client.Upload(ctx, "photos", "2024/01/photo.jpg", file,
-    oss.WithContentType("image/jpeg"),
-    oss.WithMetadata(map[string]string{
-        "x-amz-meta-uploaded-by": "alice",
-    }),
-)
+_, err := storage.PutObject(ctx, "photos", "2024/01/photo.jpg", file, "image/jpeg")
 ```
 
 ### 下载文件
 
 ```go
-reader, err := client.Download(ctx, "photos", "2024/01/photo.jpg")
-defer reader.Close()
+obj, err := storage.GetObject(ctx, "photos", "2024/01/photo.jpg")
+defer obj.Close()
 
-io.Copy(os.Stdout, reader)
+io.Copy(os.Stdout, obj)
 ```
 
-### 生成预签名 URL
+### 直接使用原生 SDK
 
 ```go
-// 生成临时下载链接（1小时有效）
-url, _ := client.GetURL(ctx, "photos", "2024/01/photo.jpg", 1*time.Hour)
-fmt.Println(url)  // https://minio.example.com/photos/2024/01/photo.jpg?X-Amz-...
+// Storage 包装器之外的场景可直接取原生客户端
+mc := storage.SDK()
+info, _ := mc.StatObject(ctx, "photos", "2024/01/photo.jpg", minio.StatObjectOptions{})
 ```
 
 ### YAML 配置
@@ -81,14 +60,26 @@ oss:
     secret_key: "minioadmin"
     secure: false
     region: "us-east-1"
-    buckets:
-      - name: photos
-        region: us-east-1
-      - name: documents
-        region: us-east-1
 ```
 
-## 四、AWS S3
+## 三、AWS S3
+
+```go
+import "github.com/tx7do/go-wind-plugins/oss/s3"
+
+storage := s3.NewStorage(&s3.Config{
+    Region:    "us-east-1",
+    AccessKey: "your-access-key",
+    SecretKey: "your-secret-key",
+    Bucket:    "my-bucket",
+})
+
+// S3 版 PutObject 绑定默认桶，无需传 bucket
+_, err := storage.PutObject(ctx, "2024/01/photo.jpg", file, "image/jpeg")
+_, err = storage.GetObject(ctx, "2024/01/photo.jpg")
+```
+
+### YAML 配置
 
 ```yaml
 oss:
@@ -102,47 +93,13 @@ oss:
         region: us-east-1
 ```
 
-## 五、Aliyun OSS
+## 四、选型说明
 
-```yaml
-oss:
-  aliyun:
-    endpoint: "oss-cn-hangzhou.aliyuncs.com"
-    access_key_id: ${ALIYUN_OSS_AK}
-    access_key_secret: ${ALIYUN_OSS_SK}
-    buckets:
-      - name: my-bucket
-        region: cn-hangzhou
-```
-
-## 六、文件操作示例
-
-### 批量上传
-
-```go
-files := []string{"a.jpg", "b.jpg", "c.jpg"}
-for _, f := range files {
-    file, _ := os.Open(f)
-    key := fmt.Sprintf("uploads/%s", f)
-    client.Upload(ctx, "photos", key, file)
-    file.Close()
-}
-```
-
-### 列出文件
-
-```go
-objects, _ := client.List(ctx, "photos", "2024/01/")
-for _, obj := range objects {
-    fmt.Printf("%s  %d bytes  %s\n", obj.Key, obj.Size, obj.LastModified)
-}
-```
-
-### 删除文件
-
-```go
-client.Delete(ctx, "photos", "2024/01/photo.jpg")
-```
+| 场景 | 推荐 | 说明 |
+|------|------|------|
+| 自建对象存储 / 私有化部署 | MinIO | minio-go 兼容各类 S3 兼容存储（MinIO、Ceph、SeaweedFS 等） |
+| AWS 云上存储 | S3 | aws-sdk-go-v2，默认桶模式 |
+| 阿里云 OSS / 腾讯云 COS | MinIO 插件 | 均提供 S3 兼容端点，配 Endpoint + ForcePathStyle 接入 |
 
 ## 相关文档
 

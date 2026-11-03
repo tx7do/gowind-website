@@ -2,7 +2,7 @@
 
 本指南面向 GoWind IoT 的交付工程师与运维人员，覆盖从环境准备、单机部署、集群部署到信创适配的完整流程。
 
-> GoWind IoT 为闭源商业产品，部署前请确认已通过商务渠道获取有效的商业授权与部署包。如未获取，请联系微信 `yang_lin_bo` 或邮箱 `yanglinbo@gmail.com`。
+> GoWind IoT 为闭源商业产品，部署前请确认已通过商务渠道获取有效的商业授权与部署包。如未获取，请联系微信 `yang_lin_bo` 或邮箱 <yanglinbo@gmail.com>。
 
 ## 一、部署前评估
 
@@ -524,6 +524,6 @@ taosdump -h tdengine -u root -p taosdata \
 ## 十、获取帮助
 
 - **部署包获取与授权**：微信 `yang_lin_bo`（备注：公司-姓名-IoT 部署）
-- **技术支持邮箱**：`yanglinbo@gmail.com`
+- **技术支持邮箱**：<yanglinbo@gmail.com>
 - **产品介绍文档**：[GoWind IoT 产品介绍](/iot/intro.md)
 - **GoWind 框架文档**：[框架总览](/framework/intro.md)

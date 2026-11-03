@@ -7,16 +7,17 @@ go-wind-bootstrap 是 GoWind 生态的最上层，通过 YAML 声明式配置将
 > 核心定义接口，插件提供实现，Bootstrap 负责装配。
 
 ```
-┌─────────────────────────────────────┐
-│         Bootstrap (装配层)           │
-│   YAML → SPI → 依赖注入 → App.Run    │
-├─────────────────────────────────────┤
-│         Plugins (实现层)             │
-│   HTTP/gRPC/Redis/Kafka/Zap/...     │
-├─────────────────────────────────────┤
-│         Core (接口层)                │
-│   transport.Server / log.Logger     │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│         Bootstrap (装配层)                │
+│  BootstrapConfig → Builder Registry      │
+│       → wind.Option 链 → wind.App         │
+├──────────────────────────────────────────┤
+│         Adapters / Plugins (实现层)       │
+│   HTTP/gRPC/Zap/Redis/Consul/Kafka/...   │
+├──────────────────────────────────────────┤
+│         Core (接口层)                     │
+│   transport.Server / log.Logger          │
+└──────────────────────────────────────────┘
 ```
 
 ## 二、Hello World
@@ -24,21 +25,21 @@ go-wind-bootstrap 是 GoWind 生态的最上层，通过 YAML 声明式配置将
 ### 2.1 config.yaml
 
 ```yaml
-name: hello-service
+app:
+  id: my-service
+  name: my-service
+  version: "1.0.0"
+  env: development
 
 server:
   http:
     addr: ":8080"
 
-log:
+logger:
+  type: zap
   zap:
     level: info
-    format: console
-
-database:
-  default:
-    driver: sqlite
-    dsn: "file:hello.db"
+    format: json
 ```
 
 ### 2.2 main.go
@@ -47,20 +48,34 @@ database:
 package main
 
 import (
-    _ "github.com/tx7do/go-wind-plugins/transport/http"
-    _ "github.com/tx7do/go-wind-plugins/log/zap"
-    _ "github.com/tx7do/go-wind-plugins/database/sqlite"
+    "fmt"
+    "net/http"
+    "os"
 
-    "github.com/tx7do/go-wind-bootstrap"
+    bootstrap "github.com/tx7do/go-wind-bootstrap"
+    _ "github.com/tx7do/go-wind-bootstrap/log/zap"
+    httpAdapter "github.com/tx7do/go-wind-bootstrap/transport/http"
 )
 
 func main() {
-    app := bootstrap.New("config.yaml")
-    app.Run()
+    httpAdapter.RegisterServerSetup(func(srv *httpAdapter.Server) {
+        srv.GET("/", func(w http.ResponseWriter, r *http.Request) {
+            _, _ = fmt.Fprintf(w, "Hello, GoWind!\n")
+        })
+    })
+
+    if err := bootstrap.RunAppWithFlags(bootstrap.NewCommandFlags()); err != nil {
+        os.Exit(1)
+    }
 }
 ```
 
-**仅 3 个 blank import + 2 行代码**，即可启动一个带 HTTP Server、日志和数据库的服务。
+**2 个 blank import + 一行启动**，即可运行一个带 HTTP Server 和日志的服务：
+
+```bash
+go run main.go                       # 使用默认 config.yaml
+go run main.go -c /path/to/config.yaml  # 指定配置文件
+```
 
 ## 三、Bootstrap vs 手动装配
 
@@ -89,12 +104,11 @@ func main() {
         httpPlugin.WithHandler(router),
     )
 
-    // 6. 创建 App
+    // 6. 创建 App（信号监听内建，无需额外选项）
     app := wind.New(
         wind.WithName("my-service"),
         wind.WithServer(httpServer),
         wind.WithLogger(logger),
-        wind.WithSignalHandler(),
     )
 
     // 7. 启动
@@ -107,8 +121,9 @@ func main() {
 ```go
 func main() {
     // 全部通过 YAML 自动装配
-    app := bootstrap.New("config.yaml")
-    app.Run()
+    if err := bootstrap.RunApp("config.yaml"); err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 
@@ -124,31 +139,40 @@ func main() {
 
 | 能力 | 说明 |
 |------|------|
-| YAML 解析 | 多格式（YAML/JSON/TOML）+ 环境变量替换 |
-| SPI 装配 | 自动实例化已注册的插件 |
-| 依赖注入 | 将实例注入到指定位置 |
-| 生命周期管理 | 初始化 → 启动 → 运行 → 停止 |
-| 中间件编排 | YAML 声明中间件链 |
-| 多实例管理 | 数据库/缓存多实例支持 |
-| 信号处理 | 自动监听 SIGTERM/SIGINT |
+| 声明式配置 | Protobuf 定义的 `BootstrapConfig`，一份 YAML/JSON/二进制描述完整应用拓扑 |
+| SPI 装配 | 适配器通过 `init()` 自注册 Builder，按配置自动实例化 |
+| 生命周期管理 | 初始化 → 启动 → 运行 → 停止；信号监听内建（SIGINT/SIGTERM） |
+| 注册中心装配 | 实例注册挪到应用启动后（AfterStart 钩子）以真实端点注册，停机时（BeforeStop 钩子）先行注销 |
+| 中间件编排 | YAML 声明中间件链，按 proto 字段序启用 |
+| 多实例管理 | 数据库/缓存/Broker/存储等多实例支持，按类型键取用 |
+| 多格式配置 | YAML / JSON / Protobuf 二进制，按扩展名自动识别 |
 
-## 五、配置文件查找
+### 字段映射代码生成
 
-Bootstrap 按以下顺序查找配置文件：
+Bootstrap 配置面的字段映射不再手工维护：各 family 配置字段到上游库选项的映射，由 [protoc-gen-fieldmap](/toolkit/fieldmap.md) 按 spec 声明式生成；同时通过 CI 按 spec 重新生成并逐字节比对，防止配置面与上游库选项之间发生漂移。详见 [protoc-gen-fieldmap 字段映射生成器](/toolkit/fieldmap.md)。
 
-1. 命令行参数 `--config`
-2. 环境变量 `CONFIG_FILE`
-3. 工作目录下的 `config.yaml`
-4. 工作目录下的 `config.yml`
-5. `/etc/app/config.yaml`（Linux）
+## 五、配置文件加载
+
+启动入口通过 Cobra 命令行指定配置文件（`-c/--conf`，默认 `config.yaml`），按扩展名自动识别格式：
+
+```bash
+go run main.go -c /path/to/config.yaml   # YAML
+go run main.go -c config.json            # JSON
+go run main.go -c config.pb              # Protobuf 二进制
+```
 
 ```go
-// 指定配置文件
-app := bootstrap.New("config.yaml")
+// 全密封：内部走 RunApp → LoadConfigFromFile
+bootstrap.RunAppWithFlags(bootstrap.NewCommandFlags())
 
-// 从多个源加载
-app := bootstrap.NewWithSources(fileSource, nacosSource)
+// 半密封：先加载配置，可操作后再运行
+cfg, _ := bootstrap.LoadConfigFromFile("config.yaml")
+bctx, _ := bootstrap.BootstrapWithContext(nil, cfg)
+fmt.Println(bctx.Config().GetApp().GetName())
+bctx.App().Run(bctx)
 ```
+
+除主配置文件外，还可配置配置中心源（file / etcd / nacos / consul / apollo 等）在启动时拉取远程配置，见 [Bootstrap 配置系统](./bootstrap-config.md)。
 
 ## 六、目录约定
 
@@ -169,13 +193,9 @@ my-service/
 └── go.sum
 ```
 
-## 七、最小化依赖
+## 七、多模块依赖隔离
 
-Bootstrap 仅依赖：
-- `github.com/tx7do/go-wind`（核心框架）
-- `gopkg.in/yaml.v3`（YAML 解析）
-
-不直接依赖任何插件，插件通过 blank import 引入。
+引导引擎核心只依赖 `go-wind`、`Cobra` 与 `Protobuf`（配置契约）。每个适配子包（`log/zap`、`transport/http`、`database/gorm`、`cache/redis`…）都是独立 `go.mod` 的子模块，只引入你用到的适配器，不用的适配器不会进入依赖树。
 
 ## 相关文档
 

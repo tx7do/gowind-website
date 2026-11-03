@@ -249,6 +249,17 @@ pnpm install
 
 后端依赖 PostgreSQL、Redis、MinIO 等中间件服务，通过 Docker Compose 启动。
 
+> **说明**：最新代码已将对象存储由 MinIO 替换为 SeaweedFS（MinIO 社区版停止维护），迁移为零代码改动。
+
+::: tip Docker 部署两模式
+项目提供两种 Docker 部署模式，脚本位于 `backend/scripts/docker/` 目录：
+
+- **`full_deploy`**（`full_deploy.sh` / `full_deploy.ps1`）：一键完整部署，应用服务与中间件全部容器化运行，适合生产环境或快速体验
+- **`libs_only`**（`libs_only.sh` / `libs_only.ps1`）：仅启动中间件服务，应用在宿主机运行，适合本地开发调试
+
+两种模式均提供 `.sh`（macOS / Linux）与 `.ps1`（Windows）双版本，也可通过 Makefile（`make docker-up` / `make docker-libs`）调用。
+:::
+
 #### 方式一：使用项目脚本（推荐）
 
 ```shell
@@ -301,17 +312,22 @@ docker compose -f docker-compose.libs.yaml up -d
 
 #### 后端启动
 
+推荐使用 gow CLI（安装方式见上文步骤 4，即 `go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest`）：
+
 ```shell
 cd go-wind-admin/backend
 
-# 使用 gow CLI 启动（推荐）
+# 启动 Admin 服务
 gow run admin
 
-# 或使用 Make
+# 代码生成子命令
+gow ent
+gow api
+gow generate
+
+# gow 未覆盖的命令，直接使用 Makefile
 make run
-# 等效于
-cd app/admin/service
-make run
+make lint
 ```
 
 #### 前端启动
@@ -343,6 +359,10 @@ pnpm dev
 | 后端 Swagger 文档 | <http://localhost:7788/docs/> |
 | 后端 SSE 服务 | <http://localhost:7789/events> |
 | MinIO 控制台 | <http://localhost:9001> |
+
+::: tip 默认账号
+系统默认管理员账号：`admin` / `Abcd@1234`（与官方演示站一致），登录后请及时修改默认密码。
+:::
 
 ## 三、生产环境部署
 

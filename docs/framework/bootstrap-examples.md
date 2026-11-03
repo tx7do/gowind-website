@@ -1,300 +1,213 @@
 # Bootstrap 实战示例
 
-从零到一的 Bootstrap 项目搭建指南，涵盖常见场景。
+从零到一的 Bootstrap 项目搭建指南，涵盖常见场景。所有示例均可在仓库 `_examples/` 目录找到对应雏形（quickstart / yaml_config / custom_builder / ddd）。
 
-## 一、REST API 服务
+## 一、最简 REST 服务
 
-### 1.1 初始化项目
-
-```bash
-wind new blog-api \
-  --transport http \
-  --database postgres \
-  --cache redis \
-  --log zap \
-  --tracer jaeger
-
-cd blog-api
-```
-
-### 1.2 配置文件
+### 1.1 config.yaml
 
 ```yaml
-# configs/config.yaml
-name: blog-api
-version: 1.0.0
+app:
+  id: hello-service
+  name: hello-service
+  version: "1.0.0"
+  env: development
 
 server:
   http:
     addr: ":8080"
     middleware:
-      - cors
-      - recovery
-      - request_id
-      - logger
-      - tracing
+      recovery:
+        stack_trace: true
+      cors:
+        allowed_origins: ["*"]
+      logging:
+        skip_paths: ["/health"]
 
-log:
+logger:
+  type: zap
   zap:
     level: info
     format: json
-
-database:
-  default:
-    driver: postgres
-    dsn: "postgres://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}?sslmode=disable"
-    max_open_conns: 50
-
-cache:
-  redis:
-    addr: "localhost:6379"
-    db: 0
-
-tracer:
-  jaeger:
-    endpoint: "http://localhost:14268/api/traces"
-    sample_ratio: 0.5
-
-middleware:
-  cors:
-    allow_origins: ["http://localhost:3000"]
-    allow_credentials: true
-  logger:
-    skip_paths: [/health]
 ```
 
-### 1.3 定义实体
-
-```go
-// ent/schema/post.go
-package schema
-
-import (
-    "entgo.io/ent"
-    "entgo.io/ent/schema/field"
-    "time"
-)
-
-type Post struct{ ent.Schema }
-
-func (Post) Fields() []ent.Field {
-    return []ent.Field{
-        field.String("title").NotEmpty(),
-        field.Text("content"),
-        field.String("author").Default("anonymous"),
-        field.Bool("published").Default(false),
-        field.Time("created_at").Default(time.Now),
-        field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
-    }
-}
-```
-
-### 1.4 生成代码
-
-```bash
-wind gen ent
-```
-
-### 1.5 业务逻辑
-
-```go
-// internal/service/post_service.go
-package service
-
-import (
-    "context"
-    "blog-api/ent"
-    "blog-api/ent/post"
-)
-
-type PostService struct {
-    client *ent.Client
-    cache  cache.Cache
-}
-
-func NewPostService(client *ent.Client, cache cache.Cache) *PostService {
-    return &PostService{client: client, cache: cache}
-}
-
-func (s *PostService) Create(ctx context.Context, title, content string) (*ent.Post, error) {
-    return s.client.Post.Create().
-        SetTitle(title).
-        SetContent(content).
-        Save(ctx)
-}
-
-func (s *PostService) GetByID(ctx context.Context, id int) (*ent.Post, error) {
-    // 先查缓存
-    key := fmt.Sprintf("post:%d", id)
-    if cached, _ := s.cache.Get(ctx, key); cached != nil {
-        var p ent.Post
-        json.Unmarshal(cached, &p)
-        return &p, nil
-    }
-
-    // 回源数据库
-    p, err := s.client.Post.Get(ctx, id)
-    if err != nil {
-        return nil, err
-    }
-
-    // 写入缓存
-    data, _ := json.Marshal(p)
-    s.cache.Set(ctx, key, data, 10*time.Minute)
-
-    return p, nil
-}
-```
-
-### 1.6 路由注册
-
-```go
-// internal/router/router.go
-package router
-
-import (
-    "net/http"
-    "github.com/tx7do/go-wind-bootstrap"
-    "blog-api/internal/service"
-)
-
-func init() {
-    bootstrap.OnRouterReady(func(app *bootstrap.App) {
-        mux := http.NewServeMux()
-
-        postSvc := service.NewPostService(app.DB(), app.Cache())
-
-        mux.HandleFunc("GET /api/posts/{id}", func(w http.ResponseWriter, r *http.Request) {
-            id := r.PathValue("id")
-            // ...
-        })
-        mux.HandleFunc("POST /api/posts", func(w http.ResponseWriter, r *http.Request) {
-            // ...
-        })
-
-        app.SetHTTPHandler(mux)
-    })
-}
-```
-
-### 1.7 main.go
+### 1.2 main.go
 
 ```go
 package main
 
 import (
-    _ "github.com/tx7do/go-wind-plugins/transport/http"
-    _ "github.com/tx7do/go-wind-plugins/log/zap"
-    _ "github.com/tx7do/go-wind-plugins/database/postgres"
-    _ "github.com/tx7do/go-wind-plugins/cache/redis"
-    _ "github.com/tx7do/go-wind-plugins/tracer/jaeger"
+    "fmt"
+    "log/slog"
+    "net/http"
+    "os"
 
-    "github.com/tx7do/go-wind-bootstrap"
-    _ "blog-api/internal/router"
+    bootstrap "github.com/tx7do/go-wind-bootstrap"
+
+    // 适配层子模块，通过空导入自注册 builder。
+    _ "github.com/tx7do/go-wind-bootstrap/log/zap"
+    httpAdapter "github.com/tx7do/go-wind-bootstrap/transport/http"
 )
 
 func main() {
-    app := bootstrap.New("configs/config.yaml")
-    app.Run()
+    // --- 配置路由（必须在 RunApp 之前）---
+    httpAdapter.RegisterServerSetup(func(srv *httpAdapter.Server) {
+        srv.GET("/", func(w http.ResponseWriter, r *http.Request) {
+            _, _ = fmt.Fprintf(w, "Hello from go-wind-bootstrap quickstart!\n")
+        })
+        srv.GET("/health", func(w http.ResponseWriter, r *http.Request) {
+            w.WriteHeader(http.StatusOK)
+        })
+    })
+
+    // --- 一行启动 ---
+    if err := bootstrap.RunAppWithFlags(bootstrap.NewCommandFlags()); err != nil {
+        slog.Error("application exited with error", "error", err)
+        os.Exit(1)
+    }
 }
 ```
+
+```bash
+go run main.go                          # 使用默认 config.yaml
+go run main.go -c /path/to/config.yaml  # 指定配置文件
+curl http://localhost:8080
+```
+
+`RegisterServerSetup` 是追加式注册：代码生成器生成的路由与手写路由各自注册、互不覆盖。
 
 ## 二、gRPC 微服务
 
+### 2.1 config.yaml
+
 ```yaml
-# configs/config.yaml
-name: user-service
+app:
+  name: user-service
 
 server:
   grpc:
-    addr: ":9090"
-
-database:
-  default:
-    driver: mysql
-    dsn: "${DB_DSN}"
+    addr: ":9000"
+    reflection: true
+    middleware:
+      recovery: {}
+      logging: {}
+      validate: {}
 
 registry:
-  consul:
-    addr: "localhost:8500"
-    health_check:
-      interval: 10s
+  type: etcd
+  etcd:
+    endpoints: ["localhost:2379"]
+    ttl: 30
+
+database:
+  sql:
+    driver: mysql
+    source: "user:pass@tcp(localhost:3306)/users?parseTime=true"
 ```
 
-```protobuf
-// api/v1/user.proto
-syntax = "proto3";
-package api.v1;
+配置注册中心后无需写任何注册代码：应用启动后（AfterStart 钩子）以真实监听端点自动注册，优雅停机时（BeforeStop 钩子）在服务器停止前自动注销。
 
-service UserService {
-    rpc GetUser(GetUserRequest) returns (User);
-    rpc CreateUser(CreateUserRequest) returns (User);
-    rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
-}
-
-message User {
-    string id = 1;
-    string username = 2;
-    string email = 3;
-}
-```
+### 2.2 main.go
 
 ```go
 package main
 
 import (
-    _ "github.com/tx7do/go-wind-plugins/transport/grpc"
-    _ "github.com/tx7do/go-wind-plugins/log/zap"
-    _ "github.com/tx7do/go-wind-plugins/database/mysql"
-    _ "github.com/tx7do/go-wind-plugins/registry/consul"
+    "google.golang.org/grpc"
 
-    "github.com/tx7do/go-wind-bootstrap"
-    _ "user-service/internal/handler"
+    bootstrap "github.com/tx7do/go-wind-bootstrap"
+    _ "github.com/tx7do/go-wind-bootstrap/log/zap"
+    grpcAdapter "github.com/tx7do/go-wind-bootstrap/transport/grpc"
+
+    v1 "user-service/api/gen/v1"
 )
 
+func init() {
+    // 注册 gRPC 服务实现
+    grpcAdapter.RegisterServiceRegistrar(func(srv *grpc.Server) {
+        v1.RegisterUserServiceServer(srv, &userService{})
+    })
+}
+
 func main() {
-    app := bootstrap.New("configs/config.yaml")
-    app.Run()
+    if err := bootstrap.RunAppWithFlags(bootstrap.NewCommandFlags()); err != nil {
+        os.Exit(1)
+    }
 }
 ```
 
-## 三、事件驱动服务
+## 三、声明式全家桶
+
+一份 YAML 同时描述缓存、数据库、对象存储、Broker、注册中心与追踪；半密封模式启动后按类型键取用装配好的实例：
 
 ```yaml
-name: event-processor
+app:
+  name: order-service
 
 server:
   http:
     addr: ":8080"
 
-broker:
-  kafka:
-    addrs: ["localhost:9092"]
-    group_id: "event-processor"
+logger:
+  type: zap
+  zap:
+    level: info
+    writer: file
+    output_path: logs/app.log
+    max_size_mb: 100
+    max_backups: 10
+
+registry:
+  type: consul
+  consul:
+    address: "localhost:8500"
+
+tracer:
+  type: otlp
+  otlp:
+    endpoint: "localhost:4317"
+    insecure: true
+
+cache:
+  redis:
+    addr: "localhost:6379"
+    key_prefix: "order"
 
 database:
-  default:
-    driver: clickhouse
-    dsn: "clickhouse://localhost:9000/events"
+  sql:
+    driver: postgres
+    source: "postgres://user:pass@localhost:5432/orders?sslmode=disable"
+
+storage:
+  minio:
+    endpoint: "localhost:9000"
+    access_key: minioadmin
+    secret_key: minioadmin
+    use_ssl: false
+
+broker:
+  kafka:
+    brokers: ["localhost:9092"]
 ```
 
 ```go
-func init() {
-    bootstrap.OnReady(func(app *bootstrap.App) {
-        // 订阅 Kafka 事件
-        app.Broker().Subscribe(ctx, "user-events", func(ctx context.Context, msg *broker.Message) error {
-            var event UserEvent
-            json.Unmarshal(msg.Body, &event)
-            // 写入 ClickHouse
-            app.DB().UserEvent.Create().
-                SetUserID(event.UserID).
-                SetEvent(event.Type).
-                SetTimestamp(event.Timestamp).
-                Save(ctx)
-            return nil
-        })
-    })
+bctx, err := bootstrap.BootstrapWithContext(nil, cfg)
+if err != nil {
+    log.Fatal(err)
 }
+defer bctx.Cleanup()
+
+// 按类型键取用装配好的实例
+db := bctx.Database("gorm")
+cache := bctx.Cache("redis")
+oss := bctx.Storage("minio")
+broker := bctx.Broker("kafka")
+reg := bctx.Registry("consul") // GetService/Watch/Register/Deregister
+
+fmt.Println(bctx.Config().GetApp().GetName())
+fmt.Println(bctx.Config().GetServer().GetHttp().GetAddr())
+
+bctx.App().Run(bctx)
 ```
 
 ## 四、Dockerfile
@@ -314,38 +227,31 @@ WORKDIR /app
 COPY --from=builder /server .
 COPY configs/ ./configs/
 EXPOSE 8080
-CMD ["./server", "--config", "configs/config.yaml"]
+CMD ["./server", "-c", "configs/config.yaml"]
 ```
 
 ## 五、Docker Compose
 
 ```yaml
 # docker-compose.yaml
-version: "3.8"
-
 services:
   app:
     build: .
     ports:
       - "8080:8080"
     environment:
-      - DB_USER=app
-      - DB_PASS=secret
-      - DB_HOST=postgres
-      - DB_NAME=blog
-      - REDIS_ADDR=redis:6379
-      - TRACER_ENDPOINT=http://jaeger:14268/api/traces
+      - DB_DSN=postgres://app:secret@postgres:5432/orders?sslmode=disable
     depends_on:
       - postgres
       - redis
-      - jaeger
+      - etcd
 
   postgres:
     image: postgres:16
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: secret
-      POSTGRES_DB: blog
+      POSTGRES_DB: orders
     ports:
       - "5432:5432"
 
@@ -354,16 +260,17 @@ services:
     ports:
       - "6379:6379"
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.60
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.17
+    command: etcd --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://etcd:2379
     ports:
-      - "16686:16686"    # Jaeger UI
-      - "14268:14268"    # HTTP Collector
+      - "2379:2379"
 ```
 
 ## 相关文档
 
 - [Bootstrap 介绍](./bootstrap-intro.md)
 - [Bootstrap CLI 工具](./bootstrap-cli.md)
+- [声明式中间件编排](./bootstrap-middleware.md)
 - [快速入门教程](./tutorial-quick-start.md)
 - [多协议同时监听教程](./tutorial-multi-transport.md)

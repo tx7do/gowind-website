@@ -1,0 +1,173 @@
+# Adding a Business Entity Tutorial
+
+This tutorial demonstrates how to add a new PostgreSQL business entity in the UBA backend (Ent schema → generation → proto → repo → service), using the already-implemented **EventSchema** in the project as a reference.
+
+> Prerequisites: first read the [Code Generation Pipeline](./tutorial-codegen.md) (especially the "Ent Generation Pitfall") and [Adding an External Service](./tutorial-new-service.md).
+
+---
+
+## 1. Applicable Scenarios
+
+- Business entities that need to be persisted to PostgreSQL (e.g. new configuration items, business tables).
+- Full CRUD is needed (List/Count/Get/Create/Update/Delete).
+
+> ⚠️ If it is **analytics data** (fact tables, aggregation queries), it should go through OLAP rather than Ent; see the OLAP repo section of [Adding an External Service](./tutorial-new-service.md).
+
+---
+
+## 2. Steps
+
+### Step 1: Define the Ent schema
+
+File: `backend/app/core/service/internal/data/ent/schema/uba_xxx.go`
+
+```go
+package schema
+
+import (
+    "entgo.io/ent"
+    "entgo.io/ent/schema"
+    "entgo.io/ent/schema/field"
+    "entgo.io/ent/schema/index"
+    "entgo.io/ent/schema/mixin"
+    entsql "entgo.io/ent/dialect/entsql"
+)
+
+type Xxx struct{ ent.Schema }
+
+func (Xxx) Fields() []ent.Field {
+    return []ent.Field{
+        field.String("name").NotEmpty().Comment("名称"),
+        field.String("code").Unique().Comment("编码"),
+        // mind the trade-offs among Nillable / Optional / Default
+    }
+}
+
+func (Xxx) Mixin() []schema.Mixin {
+    return []schema.Mixin{
+        mixin.AutoIncrementId{},   // auto-increment primary key
+        mixin.TimeAt{},            // created_at / updated_at
+        mixin.OperatorID{},        // operator
+        mixin.TenantID[uint32]{},  // multi-tenancy
+    }
+}
+
+func (Xxx) Indexes() []ent.Index {
+    return []ent.Index{
+        index.Fields("code").Unique(),
+        index.Fields("tenant_id", "name"),
+    }
+}
+
+func (Xxx) Annotations() []schema.Annotation {
+    return []schema.Annotation{
+        entsql.Annotation{Table: "uba_xxx", Charset: "utf8mb4"},
+    }
+}
+```
+
+Key points:
+
+- `Fields()`: mind the trade-offs among `Nillable` / `Optional` / `Default`.
+- `Mixin()`: reuse the project-provided `mixin.AutoIncrementId{}` / `mixin.TimeAt{}` / `mixin.OperatorID{}` / `mixin.TenantID[T]{}`.
+- `Indexes()`: unique index + regular indexes.
+- `Annotations()`: table name (`uba_` prefix), charset.
+
+### Step 2: Generate Ent code (use the correct command)
+
+> ⚠️ **Feature flags are required**; otherwise extensions are lost and compilation fails.
+
+```bash
+cd backend/app/core/service
+ent generate \
+  --feature privacy --feature entql \
+  --feature sql/modifier --feature sql/upsert --feature sql/lock \
+  ./internal/data/ent/schema
+```
+
+Or simply run `make ent` (in the `core/service` directory).
+
+### Step 3: Define the proto
+
+Domain proto (`api/protos/uba/service/v1/xxx.proto`, with the full CRUD messages) + admin gateway proto (`api/protos/admin/service/v1/i_xxx.proto`, each rpc with a `google.api.http` annotation).
+
+Refer to the CRUD pattern of `event_schema.proto` / `i_event_schema.proto`:
+
+```proto
+service XxxService {
+  rpc List(google.protobuf.PagingRequest) returns (ListXxxResponse) {}
+  rpc Count(...) returns (...);
+  rpc Get(GetXxxRequest) returns (Xxx) {}
+  rpc Create(Xxx) returns (google.protobuf.Empty) {}
+  rpc Update(Xxx) returns (google.protobuf.Empty) {}   // with FieldMask
+  rpc Delete(DeleteXxxRequest) returns (google.protobuf.Empty) {}
+}
+```
+
+### Step 4: Generate proto code
+
+```bash
+cd backend && make api && make ts
+# Sync TS (see section 5 of the Code Generation Pipeline tutorial)
+```
+
+### Step 5: Implement the repo
+
+File: `backend/app/core/service/internal/data/uba_xxx_repo.go`
+
+- Model it on `uba_tag_definition_repo.go` / `uba_event_schema_repo.go`.
+- Use the `entCrud.Repository[...]` generic + `mapper.CopierMapper`.
+- `Count` / `List` use `BuildListSelectorWithPaging`.
+- **Mind the ID types**: Ent uses `uint32` by default while proto uses `uint64`; a `uint32(req.GetId())` conversion is needed.
+
+```go
+type XxxRepo struct {
+    *entCrud.Repository[ent.Xxx, ent.XxxCreate, ent.XxxUpdate, ubaV1.Xxx, *ubaV1.Xxx]
+}
+
+func NewXxxRepo(data *Data, auth authorization.Casbin) *XxxRepo {
+    r := entCrud.NewRepository[ent.Xxx, ent.XxxCreate, ent.XxxUpdate, ubaV1.Xxx, *ubaV1.Xxx](
+        data.GetEntTx(), mapper.NewCopierMapper[ubaV1.Xxx, ent.Xxx](),
+    )
+    return &XxxRepo{Repository: r}
+}
+```
+
+### Step 6: Implement the core service + admin forwarding
+
+Same as steps 4-5 of [Adding an External Service](./tutorial-new-service.md):
+
+- Core: `internal/service/xxx_service.go` implements `ubaV1.UnimplementedXxxServiceServer` and calls the repo.
+- Admin: `internal/service/xxx_service.go` implements the forwarding.
+- Each layer registers its Providers and servers, then runs `make wire`.
+
+### Step 7: Verify
+
+```bash
+cd backend && go build ./...
+```
+
+---
+
+## 3. Table Structure Notes
+
+- **No hand-written `schema.sql`**: table structures are generated by `make ent`; on core service startup, `migrate: true` in `data.yaml` automatically creates the tables.
+- Seed data: if there is dictionary data, put it in `sql/postgresql/default-data.sql` (referring to the existing `sys_dict_types` / `sys_dict_entries`).
+
+---
+
+## 4. Common Pitfalls
+
+- **Ent compile error about missing `Modify`**: wrong ent generation command used (without feature flags, see step 2).
+- **ID type mismatch**: Ent `uint32` ↔ proto `uint64`; remember the conversion.
+- **Missing tenant field**: the entity lacks `mixin.TenantID`, breaking tenant isolation.
+- **FieldMask update not working**: the admin frontend must use `makeUpdateMask(Object.keys(values))` to generate the mask when updating (see the frontend composable conventions).
+
+---
+
+## 5. Related Documentation
+
+- [Code Generation Pipeline](./tutorial-codegen.md)
+- [Adding an External Service](./tutorial-new-service.md)
+- [Backend Module Overview](./backend-modules.md)
+- [Frontend Architecture](./frontend-architecture.md)

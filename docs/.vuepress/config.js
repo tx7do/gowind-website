@@ -9,516 +9,93 @@ import {componentsPlugin} from "vuepress-plugin-components";
 import {searchConsolePlugin} from "vuepress-plugin-china-search-console";
 import {markdownChartPlugin} from "@vuepress/plugin-markdown-chart";
 
+import sidebarZh from './sidebar-zh.js'
+import sidebarEn from './sidebar-en.js'
+
+// 中文导航栏
+const navbarZh = [
+    {text: '首页', link: '/'},
+    {text: '框架', link: '/framework/intro.md'},
+    {text: 'GoWind Toolkit', link: '/toolkit/intro.md'},
+    {
+        text: '产品矩阵',
+        children: [
+            {text: 'GoWind Admin（后台管理）', link: '/admin/intro.md'},
+            {text: 'GoWind CMS（内容管理）', link: '/cms/intro.md'},
+            {text: 'GoWind IM（即时通讯）', link: '/im/intro.md'},
+            {text: 'GoWind UBA（行为分析）', link: '/uba/intro.md'},
+            {text: 'GoWind IoT（物联网）', link: '/iot/intro.md'},
+            {text: 'GoWind Shop（电商）', link: '/shop/intro.md'},
+            {text: 'GoWind Edu（AI 教育）', link: '/edu/intro.md'},
+            {text: 'GoWind OA（协同办公）', link: '/oa/intro.md'},
+            {text: 'GoWind ERP（采购库存财务）', link: '/erp/intro.md'},
+            {text: 'GoWind WMS（仓储管理）', link: '/wms/intro.md'},
+            {text: 'GoWind Kanban（协作看板）', link: '/kanban/intro.md'},
+            {text: 'GoWind Ledger（家庭记账）', link: '/ledger/intro.md'},
+            {text: 'GoWind ShortPlay（短剧社区）', link: '/shortplay/intro.md'},
+            {text: 'GoWind Ops（运维平台）', link: '/ops/intro.md'},
+            {text: 'GoWind Quant（量化研究）', link: '/quant/intro.md'},
+            {text: 'RushWind（Rust 生态）', link: '/rushwind/intro.md'},
+        ],
+    },
+]
+
+// 英文导航栏
+const navbarEn = [
+    {text: 'Home', link: '/en/'},
+    {text: 'Framework', link: '/en/framework/intro.md'},
+    {text: 'GoWind Toolkit', link: '/en/toolkit/intro.md'},
+    {
+        text: 'Products',
+        children: [
+            {text: 'GoWind Admin (Admin Platform)', link: '/en/admin/intro.md'},
+            {text: 'GoWind CMS (Content Management)', link: '/en/cms/intro.md'},
+            {text: 'GoWind IM (Instant Messaging)', link: '/en/im/intro.md'},
+            {text: 'GoWind UBA (Behavior Analytics)', link: '/en/uba/intro.md'},
+            {text: 'GoWind IoT (IoT Platform)', link: '/en/iot/intro.md'},
+            {text: 'GoWind Shop (E-commerce)', link: '/en/shop/intro.md'},
+            {text: 'GoWind Edu (AI Education)', link: '/en/edu/intro.md'},
+            {text: 'GoWind OA (Office Collaboration)', link: '/en/oa/intro.md'},
+            {text: 'GoWind ERP (Procure-to-Pay)', link: '/en/erp/intro.md'},
+            {text: 'GoWind WMS (Warehousing)', link: '/en/wms/intro.md'},
+            {text: 'GoWind Kanban (Kanban Boards)', link: '/en/kanban/intro.md'},
+            {text: 'GoWind Ledger (Personal Finance)', link: '/en/ledger/intro.md'},
+            {text: 'GoWind ShortPlay (Short Drama)', link: '/en/shortplay/intro.md'},
+            {text: 'GoWind Ops (Operations Platform)', link: '/en/ops/intro.md'},
+            {text: 'GoWind Quant (Quant Research)', link: '/en/quant/intro.md'},
+            {text: 'RushWind (Rust Ecosystem)', link: '/en/rushwind/intro.md'},
+        ],
+    },
+]
 
 export default defineUserConfig({
-    lang: 'zh-CN',
-
-    title: 'GoWind 开源生态',
-    description: 'GoWind：AI 时代的企业级全栈研发引擎 —— 用更轻量、更符合 AI 生成的 Go 现代架构，重构你的核心业务',
+    locales: {
+        '/': {
+            lang: 'zh-CN',
+            title: 'GoWind 开源生态',
+            description: 'GoWind：AI 时代的企业级全栈研发引擎 —— 用更轻量、更符合 AI 生成的 Go 现代架构，重构你的核心业务',
+        },
+        '/en/': {
+            lang: 'en-US',
+            title: 'GoWind Open Ecosystem',
+            description: 'GoWind: the enterprise full-stack R&D engine for the AI era — rebuild your core business with a lighter, modern Go architecture that AI generates naturally',
+        },
+    },
 
     theme: defaultTheme({
         logo: '/logo.png',
 
-        // 导航栏链接
-        navbar: [
-            {text: '首页', link: '/'},
-            {text: '框架', link: '/framework/intro.md'},
-            {text: 'GoWind Toolkit', link: '/toolkit/intro.md'},
-            {
-                text: '产品矩阵',
-                children: [
-                    {text: 'GoWind Admin（后台管理）', link: '/admin/intro.md'},
-                    {text: 'GoWind CMS（内容管理）', link: '/cms/intro.md'},
-                    {text: 'GoWind IM（即时通讯）', link: '/im/intro.md'},
-                    {text: 'GoWind UBA（行为分析）', link: '/uba/intro.md'},
-                    {text: 'GoWind IoT（物联网）', link: '/iot/intro.md'},
-                    {text: 'GoWind Shop（电商）', link: '/shop/intro.md'},
-                    {text: 'GoWind Edu（AI 教育）', link: '/edu/intro.md'},
-                    {text: 'GoWind OA（协同办公）', link: '/oa/intro.md'},
-                    {text: 'GoWind ERP（采购库存财务）', link: '/erp/intro.md'},
-                    {text: 'GoWind WMS（仓储管理）', link: '/wms/intro.md'},
-                    {text: 'GoWind Kanban（协作看板）', link: '/kanban/intro.md'},
-                    {text: 'GoWind Ledger（家庭记账）', link: '/ledger/intro.md'},
-                    {text: 'GoWind ShortPlay（短剧社区）', link: '/shortplay/intro.md'},
-                    {text: 'GoWind Ops（运维平台）', link: '/ops/intro.md'},
-                    {text: 'GoWind Quant（量化研究）', link: '/quant/intro.md'},
-                    {text: 'RushWind（Rust 生态）', link: '/rushwind/intro.md'},
-                ],
+        locales: {
+            '/': {
+                selectLanguageName: '简体中文',
+                navbar: navbarZh,
+                sidebar: sidebarZh,
             },
-        ],
-
-        // 侧边栏配置（分项目独立侧边栏）
-        sidebar: {
-            // 通用指南侧边栏
-            '/guide/': [
-                {
-                    text: '通用指南',
-                    children: [
-                        '/guide/getting-started.md',
-                        '/guide/contribution.md',
-                        '/guide/faq.md',
-                    ],
-                },
-            ],
-            // 框架层侧边栏
-            '/framework/': [
-                {
-                    text: '介绍',
-                    children: [
-                        '/framework/intro.md',
-                        '/framework/architecture.md',
-                    ],
-                },
-                {
-                    text: 'go-wind 核心',
-                    children: [
-                        '/framework/core-intro.md',
-                        '/framework/core-lifecycle.md',
-                        '/framework/core-context.md',
-                        '/framework/core-transport.md',
-                        '/framework/core-logging.md',
-                    ],
-                },
-                {
-                    text: 'go-wind-plugins 插件',
-                    children: [
-                        '/framework/plugins-intro.md',
-                        '/framework/plugins-config.md',
-                        '/framework/plugins-registry.md',
-                        '/framework/plugins-log.md',
-                        '/framework/plugins-transport.md',
-                        '/framework/plugins-broker.md',
-                        '/framework/plugins-encoding.md',
-                        '/framework/plugins-security.md',
-                        '/framework/plugins-tracer.md',
-                        '/framework/plugins-cache.md',
-                        '/framework/plugins-oss.md',
-                        '/framework/plugins-ratelimit.md',
-                        '/framework/plugins-metrics.md',
-                        '/framework/plugins-ai.md',
-                        '/framework/plugins-workflow.md',
-                        '/framework/plugins-database.md',
-                        '/framework/plugins-gateway.md',
-                        '/framework/plugins-compress.md',
-                        '/framework/plugins-template.md',
-                    ],
-                },
-                {
-                    text: 'go-wind-bootstrap 启动器',
-                    children: [
-                        '/framework/bootstrap-intro.md',
-                        '/framework/bootstrap-config.md',
-                        '/framework/bootstrap-spi.md',
-                        '/framework/bootstrap-middleware.md',
-                        '/framework/bootstrap-cli.md',
-                        '/framework/bootstrap-examples.md',
-                    ],
-                },
-                {
-                    text: 'go-wind-flow 流程引擎',
-                    children: [
-                        '/framework/flow-intro.md',
-                    ],
-                },
-                {
-                    text: '教程',
-                    children: [
-                        '/framework/tutorial-quick-start.md',
-                        '/framework/tutorial-custom-plugin.md',
-                        '/framework/tutorial-multi-transport.md',
-                        '/framework/tutorial-migration.md',
-                    ],
-                },
-            ],
-            // GoWind Admin 侧边栏
-            '/admin/': [
-                {
-                    text: '介绍',
-                    children: [
-                        '/admin/intro.md',
-                        '/admin/installation.md',
-                        '/admin/release-notes.md',
-                    ],
-                },
-                {
-                    text: '后端文档',
-                    children: [
-                        '/admin/backend-architecture.md',
-                        '/admin/backend-modules.md',
-                        '/admin/backend-api.md',
-                        '/admin/backend-config-deploy.md',
-                        '/admin/backend-extension.md',
-                    ],
-                },
-                {
-                    text: '前端文档',
-                    children: [
-                        '/admin/frontend-architecture.md',
-                        '/admin/frontend-modules.md',
-                    ],
-                },
-                {
-                    text: '二开教程',
-                    children: [
-                        '/admin/backend-tutorial-new-module.md',
-                        '/admin/frontend-tutorial-new-page.md',
-                        '/admin/tutorial-fullstack-integration.md',
-                    ],
-                },
-                {
-                    text: '高级教程',
-                    children: [
-                        '/admin/tutorial-lua-extension.md',
-                        '/admin/tutorial-permission-system.md',
-                        '/admin/tutorial-multi-tenancy.md',
-                        '/admin/tutorial-task-scheduling.md',
-                        '/admin/tutorial-file-storage.md',
-                        '/admin/tutorial-eventbus-architecture.md',
-                        '/admin/tutorial-theme-i18n.md',
-                        '/admin/tutorial-performance-monitoring.md',
-                        '/admin/tutorial-sse-push.md',
-                        '/admin/tutorial-login-security.md',
-                        '/admin/tutorial-crypto-toolkit.md',
-                    ],
-                },
-            ],
-            // GoWind CMS 侧边栏
-            '/cms/': [
-                {
-                    text: '介绍',
-                    children: [
-                        '/cms/intro.md',
-                        '/cms/installation.md',
-                    ],
-                },
-                {
-                    text: '后端文档',
-                    children: [
-                        '/cms/backend-architecture.md',
-                        '/cms/backend-modules.md',
-                        '/cms/backend-api.md',
-                        '/cms/backend-config-deploy.md',
-                        '/cms/backend-extension.md',
-                    ],
-                },
-                {
-                    text: '前端文档',
-                    children: [
-                        '/cms/frontend-architecture.md',
-                        '/cms/frontend-modules.md',
-                    ],
-                },
-                {
-                    text: '入门教程',
-                    children: [
-                        '/cms/tutorial-new-content.md',
-                        '/cms/tutorial-codegen.md',
-                    ],
-                },
-                {
-                    text: '核心教程',
-                    children: [
-                        '/cms/tutorial-content-i18n.md',
-                        '/cms/tutorial-content-workflow.md',
-                        '/cms/tutorial-section-editor.md',
-                        '/cms/tutorial-headless-api.md',
-                        '/cms/tutorial-frontend-app.md',
-                    ],
-                },
-                {
-                    text: '进阶教程',
-                    children: [
-                        '/cms/tutorial-multi-site.md',
-                        '/cms/tutorial-media-asset.md',
-                        '/cms/tutorial-comment-system.md',
-                        '/cms/tutorial-eventbus-architecture.md',
-                        '/cms/tutorial-lua-extension.md',
-                    ],
-                },
-                {
-                    text: '高阶教程',
-                    children: [
-                        '/cms/tutorial-permission-system.md',
-                        '/cms/tutorial-login-security.md',
-                        '/cms/tutorial-crypto-toolkit.md',
-                        '/cms/tutorial-search.md',
-                        '/cms/tutorial-task-scheduling.md',
-                        '/cms/tutorial-sse-push.md',
-                        '/cms/tutorial-performance-monitoring.md',
-                        '/cms/tutorial-dict-system.md',
-                    ],
-                },
-                {
-                    text: '综合教程',
-                    children: [
-                        '/cms/tutorial-fullstack-integration.md',
-                        '/cms/tutorial-deploy.md',
-                    ],
-                },
-            ],
-            // GoWind Edu 侧边栏（闭源交付产品 · 面向学校/机构客户）
-            '/edu/': [
-                {
-                    text: 'GoWind Edu',
-                    children: [
-                        '/edu/intro.md',
-                        '/edu/student.md',
-                        '/edu/teacher.md',
-                    ],
-                },
-            ],
-            // GoWind ShortPlay 侧边栏
-            '/shortplay/': [
-                {
-                    text: 'GoWind ShortPlay（风印短剧）',
-                    children: [
-                        '/shortplay/intro.md',
-                        '/shortplay/quick-start.md',
-                    ],
-                },
-            ],
-            // GoWind Shop 侧边栏（开源项目）
-            '/shop/': [
-                {
-                    text: 'GoWind Shop',
-                    children: [
-                        '/shop/intro.md',
-                        '/shop/quick-start.md',
-                        '/shop/features.md',
-                        '/shop/trial.md',
-                    ],
-                },
-            ],
-            // GoWind IM 侧边栏
-            '/im/': [
-                {
-                    text: 'GoWind IM',
-                    children: [
-                        '/im/intro.md',
-                        '/im/features.md',
-                        '/im/installation.md',
-                    ],
-                },
-            ],
-            // GoWind UBA 侧边栏（按角色分栏）
-            '/uba/': [
-                {
-                    text: '介绍',
-                    children: [
-                        '/uba/intro.md',
-                    ],
-                },
-                {
-                    text: '架构参考',
-                    children: [
-                        '/uba/architecture.md',
-                        '/uba/backend-modules.md',
-                        '/uba/backend-api.md',
-                        '/uba/frontend-architecture.md',
-                    ],
-                },
-                {
-                    text: '开发者指南（二开）',
-                    children: [
-                        '/uba/installation.md',
-                        '/uba/tutorial-codegen.md',
-                        '/uba/tutorial-new-service.md',
-                        '/uba/tutorial-new-entity.md',
-                        '/uba/tutorial-new-page.md',
-                    ],
-                },
-                {
-                    text: '运维指南',
-                    children: [
-                        '/uba/deploy-docker.md',
-                        '/uba/deploy-config.md',
-                        '/uba/deploy-pm2.md',
-                        '/uba/deploy-superset.md',
-                    ],
-                },
-                {
-                    text: '数据分析师指南',
-                    children: [
-                        '/uba/analyst-getting-started.md',
-                        {
-                            text: '基础聚合',
-                            children: [
-                                '/uba/analyst-event-trend.md',
-                                '/uba/analyst-active-users.md',
-                                '/uba/analyst-group-by.md',
-                            ],
-                        },
-                        {
-                            text: '转化与路径',
-                            children: [
-                                '/uba/analyst-funnel.md',
-                                '/uba/analyst-retention.md',
-                                '/uba/analyst-path-sankey.md',
-                                '/uba/analyst-behavior-sequence.md',
-                            ],
-                        },
-                        {
-                            text: '用户深度',
-                            children: [
-                                '/uba/analyst-attribution.md',
-                                '/uba/analyst-distribution.md',
-                                '/uba/analyst-segmentation.md',
-                                '/uba/analyst-click.md',
-                                '/uba/analyst-interval.md',
-                            ],
-                        },
-                        {
-                            text: '生命周期',
-                            children: [
-                                '/uba/analyst-lifecycle.md',
-                                '/uba/analyst-churn.md',
-                                '/uba/analyst-new-vs-old.md',
-                                '/uba/analyst-matrix.md',
-                            ],
-                        },
-                        {
-                            text: '营收与价值',
-                            children: [
-                                '/uba/analyst-revenue.md',
-                                '/uba/analyst-whale-tier.md',
-                                '/uba/analyst-ltv.md',
-                            ],
-                        },
-                        {
-                            text: '会话与异常',
-                            children: [
-                                '/uba/analyst-session-analysis.md',
-                                '/uba/analyst-anomaly.md',
-                            ],
-                        },
-                        {
-                            text: '游戏专属',
-                            children: [
-                                '/uba/analyst-level-analysis.md',
-                                '/uba/analyst-server-retention.md',
-                                '/uba/analyst-online-stats.md',
-                                '/uba/analyst-economy.md',
-                            ],
-                        },
-                        '/uba/analyst-olap-cookbook.md',
-                    ],
-                },
-                {
-                    text: 'SDK 接入',
-                    children: [
-                        '/uba/sdk-web.md',
-                        '/uba/sdk-csharp.md',
-                    ],
-                },
-                {
-                    text: '附录',
-                    children: [
-                        '/uba/appendix.md',
-                    ],
-                },
-            ],
-            // GoWind Toolkit 侧边栏
-            '/toolkit/': [
-                {
-                    text: 'GoWind Toolkit',
-                    children: [
-                        '/toolkit/intro.md',
-                    ],
-                },
-                {
-                    text: '代码生成',
-                    children: [
-                        '/toolkit/backend-code-generation.md',
-                        '/toolkit/frontend-code-generation.md',
-                        '/toolkit/fieldmap.md',
-                    ],
-                },
-            ],
-            // GoWind IoT 侧边栏
-            '/iot/': [
-                {
-                    text: 'GoWind IoT',
-                    children: [
-                        '/iot/intro.md',
-                        '/iot/installation.md',
-                    ],
-                },
-            ],
-            // GoWind Ops 侧边栏
-            '/ops/': [
-                {
-                    text: 'GoWind Ops',
-                    children: [
-                        '/ops/intro.md',
-                        '/ops/quick-start.md',
-                    ],
-                },
-            ],
-            // GoWind Quant 侧边栏
-            '/quant/': [
-                {
-                    text: 'GoWind Quant',
-                    children: [
-                        '/quant/intro.md',
-                        '/quant/strategies.md',
-                    ],
-                },
-            ],
-            // 风行协同办公侧边栏（开源项目）
-            '/oa/': [
-                {
-                    text: '风行协同办公',
-                    children: [
-                        '/oa/intro.md',
-                    ],
-                },
-            ],
-            // 风行看板侧边栏（开源项目）
-            '/kanban/': [
-                {
-                    text: '风行看板',
-                    children: [
-                        '/kanban/intro.md',
-                    ],
-                },
-            ],
-            // 风行记账侧边栏（开源项目）
-            '/ledger/': [
-                {
-                    text: '风行记账',
-                    children: [
-                        '/ledger/intro.md',
-                    ],
-                },
-            ],
-            // GoWind ERP 侧边栏（开源项目）
-            '/erp/': [
-                {
-                    text: 'GoWind ERP',
-                    children: [
-                        '/erp/intro.md',
-                    ],
-                },
-            ],
-            // GoWind WMS 侧边栏（开源项目）
-            '/wms/': [
-                {
-                    text: 'GoWind WMS',
-                    children: [
-                        '/wms/intro.md',
-                    ],
-                },
-            ],
-            // RushWind 侧边栏（Rust 生态）
-            '/rushwind/': [
-                {
-                    text: 'RushWind（Rust 生态）',
-                    children: [
-                        '/rushwind/intro.md',
-                        '/rushwind/admin.md',
-                    ],
-                },
-            ],
+            '/en/': {
+                selectLanguageName: 'English',
+                navbar: navbarEn,
+                sidebar: sidebarEn,
+            },
         },
 
         // 仓库地址（右上角 GitHub 图标链接）
@@ -540,10 +117,10 @@ export default defineUserConfig({
         searchPlugin({
             locales: {
                 '/': {
-                    placeholder: 'Search',
-                },
-                '/zh/': {
                     placeholder: '搜索',
+                },
+                '/en/': {
+                    placeholder: 'Search',
                 },
             },
         }),

@@ -21,11 +21,11 @@ features:
   - title: Building-Block Microservice Framework
     details: Three layers of building blocks — go-wind + plugins + bootstrap — with 157 independent modules and 130+ plugins covering 20+ domains. One YAML declaration assembles production-grade microservices with zero-code startup
   - title: Full-Stack Product Matrix
-    details: Admin consoles, content, communication, analytics, IoT, e-commerce, education, short-play, ops, office, ERP, WMS, kanban, bookkeeping — one tech stack covering every enterprise digitalization scenario
+    details: Admin consoles, content, communication, analytics, IoT, e-commerce, education, short-play, ops, office, ERP, WMS, kanban, bookkeeping, quantitative research, and industry decision radars — one tech stack covering every enterprise digitalization scenario
   - title: Enterprise-Grade · Xinchuang-Friendly
     details: Multi-tenant isolation, fine-grained permissions, and built-in security auditing; a full stack with no foreign runtime dependencies, natively adapted to Kunpeng/Loongson CPUs and Kylin/UnionTech UOS — meeting the self-reliance requirements of government and enterprises
   - title: Open-Source Freedom · Business-Friendly
-    details: The OA/ERP/WMS/Kanban/Ledger/ShortPlay/Ops/Admin/CMS/UBA/Shop repositories are free to use as open source; IM/IoT/Edu offer closed-source commercial editions for enterprise-grade paid needs
+    details: The OA/ERP/WMS/Kanban/Ledger/ShortPlay/Ops/Admin/CMS/UBA/Shop repositories are free to use as open source; IM/IoT/Edu/Quant/Trade Radar/Game Radar offer closed-source commercial editions for enterprise-grade paid needs
 footer: MIT Licensed | Copyright © 2026-present GoWind Team
 ---
 
@@ -57,6 +57,8 @@ GoWind's answer is a path better suited to the AI era:
 | [GoWind ShortPlay](/en/shortplay/intro.md) | Short-play community | Immersive vertical-swipe feed, danmaku comments and DMs, a complete moderation loop, creator analytics — open-source MVP, ready out of the box |
 | [GoWind Ops](/en/ops/intro.md) | Operations platform | Multi-node control, web terminal, batch script execution, build and distribution, monitoring/alerting and cloud cost management |
 | [GoWind Quant](/en/quant/intro.md) | Quantitative research | Market data, smart stock screening, strategy backtesting, paper trading and an AI assistant — a full-cycle research workbench |
+| [GoWind Trade Radar](/en/trade-radar/intro.md) | Export product-selection decisions | Three-sided data feeds hourly "product candlesticks"; ten signal types auto-scanned with backtesting first; one line from selection sandbox to project tracking; AI-visibility probing and a GEO content workshop, MCP-ready for AI clients |
+| [GoWind Game Radar](/en/game-radar/intro.md) | Game greenlight decisions | 25 community big-data sources and six R&D signals; niche-survival scans and same-tier survival math answer "where to stand and whether we survive"; greenlight sandbox (portfolio/single-bet) and decision weeklies |
 | [GoWind OA](/en/oa/intro.md) | Collaborative office | Workflow approvals, attendance clock-in, leave and expense reimbursement — admin console plus a Flutter mobile app |
 | [GoWind ERP](/en/erp/intro.md) | Enterprise resource planning | Procurement, inventory, and finance in one closed loop; documents drive documents, half-day onboarding with zero implementation |
 | [GoWind WMS](/en/wms/intro.md) | Warehouse management | Multi-owner isolation, ASN inbound, wave outbound, FEFO batch/expiry management, Flutter PDA scanning |

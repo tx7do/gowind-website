@@ -21,11 +21,11 @@ features:
   - title: 积木式微服务框架
     details: go-wind + plugins + bootstrap 三层积木，157 个独立模块、130+ 插件覆盖 20+ 领域，一份 YAML 声明即可装配生产级微服务，零代码启动
   - title: 全栈产品矩阵
-    details: 后台管理、内容、通信、分析、物联、电商、教育、短剧、运维、办公、ERP、WMS、看板、记账——一套技术栈覆盖企业数字化全场景
+    details: 后台管理、内容、通信、分析、物联、电商、教育、短剧、运维、办公、ERP、WMS、看板、记账、量化与行业决策雷达——一套技术栈覆盖企业数字化全场景
   - title: 企业级 · 信创友好
     details: 多租户隔离、细粒度权限、安全审计内建；全栈无国外运行时依赖，原生适配鲲鹏/龙芯与麒麟/统信 UOS，满足政企自主可控要求
   - title: 开源自由 · 商业友好
-    details: OA/ERP/WMS/Kanban/Ledger/ShortPlay/Ops/Admin/CMS/UBA/Shop 等开源仓库自由使用；IM/IoT/Edu 提供闭源商用版，覆盖企业级付费需求
+    details: OA/ERP/WMS/Kanban/Ledger/ShortPlay/Ops/Admin/CMS/UBA/Shop 等开源仓库自由使用；IM/IoT/Edu/Quant/Trade Radar/Game Radar 提供闭源商用版，覆盖企业级付费需求
 footer: MIT Licensed | Copyright © 2026-present GoWind Team
 ---
 
@@ -57,6 +57,8 @@ GoWind 给出的答案，是一条更符合 AI 时代的路：
 | [GoWind ShortPlay](/shortplay/intro.md) | 短剧社区 | 沉浸式上下滑 Feed、弹幕私信、审核闭环、创作者数据，开源 MVP 开箱即用 |
 | [GoWind Ops](/ops/intro.md) | 运维平台 | 多节点管控、Web 终端、脚本批量执行、构建分发、监控告警与云成本管理 |
 | [GoWind Quant](/quant/intro.md) | 量化研究 | 行情数据、智能选股、策略回测、模拟交易与 AI 助手，全流程研究工作台 |
+| [GoWind Trade Radar](/trade-radar/intro.md) | 外贸选品决策 | 三侧数据汇成小时级商品 K 线，十类信号自动扫描、回测先行；选品沙盘到立项跟进一条线；AI 可见度探测与 GEO 内容工坊，MCP 直连 AI 客户端 |
+| [GoWind Game Radar](/game-radar/intro.md) | 游戏立项决策 | 25 源社群大数据、六类研发信号；细分生存位扫描与同量级生存数学回答「往哪站、活不活得下来」；立项沙盘（组合/单注）与决策周报 |
 | [风行 OA](/oa/intro.md) | 协同办公 | 工作流审批、考勤打卡、请假报销，管理后台 + Flutter 移动端 |
 | [GoWind ERP](/erp/intro.md) | 企业资源计划 | 采购、库存、财务闭环，单据驱动单据，免实施半天上手 |
 | [GoWind WMS](/wms/intro.md) | 仓储管理 | 多货主隔离、ASN 入库、波次出库、FEFO 批次效期，Flutter PDA 扫码 |

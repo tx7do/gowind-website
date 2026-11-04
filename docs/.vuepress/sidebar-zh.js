@@ -402,6 +402,24 @@ export default {
             ]
         }
     ],
+    "/trade-radar/": [
+        {
+            "text": "GoWind Trade Radar",
+            "children": [
+                "/trade-radar/intro.md",
+                "/trade-radar/signals.md"
+            ]
+        }
+    ],
+    "/game-radar/": [
+        {
+            "text": "GoWind Game Radar",
+            "children": [
+                "/game-radar/intro.md",
+                "/game-radar/survival.md"
+            ]
+        }
+    ],
     "/oa/": [
         {
             "text": "风行协同办公",

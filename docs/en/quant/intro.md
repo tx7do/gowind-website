@@ -7,6 +7,7 @@ GoWind Quant is a quantitative research platform covering the full workflow of "
 - **Data in one step**: quotes, candlesticks, order book depth, and tick-by-tick trades on a single screen with real-time refresh — order book movements are visible immediately
 - **AI involved end to end**: AI stock screening, AI strategy generation, AI backtest interpretation, and AI daily trading reports — natural language runs through the entire research workflow
 - **Realistic backtesting**: real-world trading constraints such as price limits and trading halts are accounted for, with built-in slippage and commission models, making backtest results more trustworthy
+- **Portfolio strategies as first-class citizens**: single-instrument and multi-instrument portfolio strategies share one workbench — define the universe, write cross-sectional logic in an on_bars callback, and manage risk and evaluation at the portfolio level
 - **Robustness checks built in**: parameter optimization, walk-forward validation, and Monte Carlo confidence intervals — overfitting protection out of the box
 - **Risk-safe trading rehearsal**: limit orders, stop-loss orders, an intraday loss circuit breaker, and daily reconciliation corrections keep risk controllable across the entire paper-trading chain
 - **Trustworthy, traceable data**: multiple data sources cross-connected, with a data quality panel showing freshness and coverage per domain — every candlestick is traceable
@@ -20,7 +21,7 @@ GoWind Quant is a quantitative research platform covering the full workflow of "
 | Real-time market data | Quotes, candlesticks, order book depth, tick-by-tick trades, and index quotes in switchable tabs on one screen |
 | Real-time order book push | Order book and tick data refresh in real time — no manual polling |
 | Multi-source data access | Multiple mainstream data sources, including baostock, tushare, finnhub, eodhd, and marketstack |
-| Data quality panel | Freshness grading, coverage, anomaly detection, and multi-source cross-validation across seven data domains — data trustworthiness at a glance |
+| Data quality panel | Freshness grading, coverage, anomaly detection, multi-source cross-validation, and ingestion statistics across seven data domains — data trustworthiness at a glance |
 | Data source health monitoring | Availability and collection status of each data source displayed centrally, so issues surface early |
 
 ### 2. News and Sentiment
@@ -45,7 +46,9 @@ GoWind Quant is a quantitative research platform covering the full workflow of "
 
 | Feature | Description |
 |---|---|
-| Strategy authoring | Dual engines in Lua and JavaScript, with common indicators such as MACD, RSI, BOLL, ATR, and KDJ built in |
+| Strategy authoring | Dual engines in Lua and JavaScript, with common indicators such as MACD, RSI, BOLL, ATR, and KDJ built in; single-instrument and multi-instrument portfolio modes |
+| Portfolio strategies | Cross-sectional multi-instrument strategies: an on_bars callback receives the whole universe at once, instruments come from index constituents or a custom pool, with portfolio-level risk (such as a max-concurrent-holdings cap) and unified evaluation — one engine for backtest and rehearsal |
+| News-event strategies | Subscribe to news alert events to trigger strategy execution — one more trigger source beyond market data |
 | Factor system | 16 classic factors out of the box, with IC/IR analysis and layered backtesting; custom factor expressions supported |
 | AI strategy generation | Describe a strategy idea in natural language and AI drafts the strategy, auto-validates it, and puts it to use |
 | Python research SDK | Research data exports as pandas DataFrames, plugging seamlessly into your existing analysis environment |
@@ -58,7 +61,7 @@ GoWind Quant is a quantitative research platform covering the full workflow of "
 | Parameter optimization | Grid-based parameter sweeps, walk-forward rolling validation, and optimization heatmaps |
 | Robustness evaluation | Monte Carlo confidence intervals and tail-risk analysis to test strategy robustness |
 | AI backtest interpretation | Backtest reports are interpreted automatically by AI for fast problem locating |
-| Portfolio backtesting | Multi-instrument portfolio backtests with portfolio-level risk control |
+| Portfolio backtesting | Multi-instrument portfolio backtests with portfolio-level risk control and unified evaluation; portfolio strategies also support grid and walk-forward optimization, with per-instrument attribution on the equity curve page |
 
 ### 6. Paper Trading
 
@@ -92,6 +95,7 @@ GoWind Quant is a quantitative research platform covering the full workflow of "
 
 - **Investment research teams**: a unified workspace for data, screening, backtesting, and review — replacing a patchwork of separate tools
 - **Strategy researchers**: a complete path from idea to validation, with AI assistance accelerating strategy iteration
+- **Multi-instrument/portfolio strategy researchers**: evaluate a whole basket of instruments in one cross-sectional pass, with portfolio-level risk and attribution
 - **Quant education and training**: a simulated trading environment under real market constraints — practice without touching real money
 
 ## Learn More

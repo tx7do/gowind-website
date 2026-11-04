@@ -14,7 +14,7 @@ Strategy research starts with an idea: "Can riding a strengthening market make m
 |---|---|
 | Signals on daily bars, entries on minute bars, constant switching between timeframes | Multi-timeframe market data compared side by side, with historical data aligned automatically |
 | Over-idealized stop-loss assumptions distort validation results | Backtests include a slippage model and realistic fill constraints |
-| Many instruments — how to allocate capital | Multi-instrument portfolio backtests with portfolio-level evaluation |
+| Many instruments — how to allocate capital | The portfolio strategy engine: define the universe, process the whole pool in one cross-sectional callback, with portfolio-level risk control and unified evaluation |
 
 ### 2. Statistical Arbitrage
 
@@ -49,7 +49,7 @@ Strategy research starts with an idea: "Can riding a strengthening market make m
 ## 2. From Idea to Conclusion: A Complete Research Journey
 
 1. **Pose the idea** — observe market patterns in the data panel and use the AI assistant to check data against your intuition;
-2. **Codify** — turn the idea into executable rules with strategy scripts or AI strategy generation;
+2. **Codify** — turn the idea into executable rules with strategy scripts (single-instrument or portfolio mode) or AI strategy generation;
 3. **Quick backtest** — run a basic backtest first to check the big picture, with AI interpretation locating obvious problems fast;
 4. **Parameter optimization** — grid sweeps + heatmaps: observe parameter sensitivity rather than just the best point;
 5. **Robustness checks** — walk-forward validation and Monte Carlo confidence intervals filter out "overfitted" parameters;

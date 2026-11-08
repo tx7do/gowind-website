@@ -18,7 +18,7 @@ Many online practice tools only solve one step, "doing problems": the student fi
 | Grading | Objective questions are scored instantly; subjective questions are graded asynchronously by AI | Provides scores and comments |
 | Wrong questions | Incorrect answers are collected automatically into the wrong-question notebook, with error-cause tagging | Explains wrong answers, recommends similar problems, generates variant drills |
 | Review | A review plan is generated automatically by the forgetting curve | Adaptively adjusts each student's review intervals |
-| Homework | Teachers assign homework; students view pending / submitted items and deadlines | — |
+| Homework | Teachers assign homework; students view pending / submitted items and deadlines; the system auto-reminds students who haven't submitted 24 hours before the deadline | — |
 | Learning analytics | Subject mastery, accuracy trends, class leaderboards, class reports | Produces whole-paper reviews and practice suggestions |
 
 Every day, students open "Today's Tasks" and know what to review, which homework to submit, and which weak point to fix; the AI tutor steps in at any moment during Q&A, grading, and explanations, like a private tutor who is always online. Teachers don't need to chase or tabulate: completion rates, wrong questions, and weak points are aggregated automatically into the teacher dashboard.
@@ -29,7 +29,7 @@ Every day, students open "Today's Tasks" and know what to review, which homework
 |--------|-------------|------------|
 | After finishing | Only a score, nothing more | Wrong questions collected automatically; review scheduled automatically |
 | Subjective questions | Usually self-graded or skipped | AI grading provides scores and comments, with the teacher making the final call |
-| Review scheduling | Relies on student discipline or parent reminders | Ebbinghaus + SM-2 (spaced repetition) scheduling, with in-site reminders when due |
+| Review scheduling | Relies on student discipline or parent reminders | Ebbinghaus + SM-2 (spaced repetition) scheduling, with in-site and WeChat reminders when due |
 | Variant drills | None | AI-generated variants of wrong questions, kept private per student |
 | Teacher side | Missing | Grading Center, learning analytics dashboard, AI class reports, printable wrong-question sheets |
 | Deployment | Public cloud SaaS | On-premise deployment for schools / institutions |
@@ -38,13 +38,13 @@ Every day, students open "Today's Tasks" and know what to review, which homework
 
 ### 1. AI Grading and AI Question Generation
 
-- **AI grading of subjective questions**: after submission, subjective questions are graded asynchronously by AI with scores and comments; students can self-assess against the comments. In the Grading Center, teachers accept AI scores in bulk with one click for final grading, or override scores manually — statistics recalculate automatically after any change.
+- **AI grading of subjective questions**: after submission, subjective questions are graded asynchronously by AI with scores and comments; students can self-assess against the comments. In the Grading Center, teachers accept AI scores in bulk with one click for final grading, or override scores manually — statistics recalculate automatically after any change. Subjective answers can be typed or photographed (up to 3 photos); AI grades against the image content with paragraph-level annotations, and can polish a teacher's comment drafts into something more professional and specific.
 - **AI question generation + semantic deduplication**: pick knowledge points and let AI generate questions; the system deduplicates via semantic vectors to avoid repeating existing questions. Suspect questions (e.g., with abnormal error rates) raise alerts for teacher review.
 - **OCR photo-based question import**: photograph paper exams and the questions are recognized into the question bank; combined with AI illustration, digitizing existing question inventories is quick.
 
 ### 2. SM-2 Adaptive Review
 
-Wrong questions automatically generate a review plan based on the Ebbinghaus forgetting curve, with intervals adapted by the SM-2 (spaced repetition) algorithm: correct answers lengthen the interval, wrong answers shorten it — the review rhythm of every question is personalized for every student. Tasks due are pushed via in-site messages, and the student side provides a 7-day review calendar.
+Wrong questions automatically generate a review plan based on the Ebbinghaus forgetting curve, with intervals adapted by the SM-2 (spaced repetition) algorithm: correct answers lengthen the interval, wrong answers shorten it — the review rhythm of every question is personalized for every student. Tasks due are pushed via in-site messages and WeChat, and the student side provides a 7-day review calendar with completion statistics.
 
 ### 3. Wrong-Question Notebook Loop
 
@@ -53,7 +53,7 @@ Automatic collection, accumulating repeated mistakes, error-cause tagging, simil
 ### 4. Learning Analytics Dashboard
 
 - **Student side**: cumulative answers, accuracy, consecutive study-day streak, subject mastery, 30-day trends, and the class answer leaderboard.
-- **Teacher side**: accuracy overview, high-frequency wrong-question ranking, weak knowledge-point ranking, dual-axis 30-day trend chart, error-cause distribution, suspect-question alerts, plus AI-generated class learning reports.
+- **Teacher side**: accuracy overview, high-frequency wrong-question ranking, weak knowledge-point ranking, trend charts, error-cause distribution, suspect-question alerts, disengagement warnings, multi-class knowledge-point comparison, mastery matrix, review-execution board, plus AI-generated class learning reports and per-student analytics export.
 
 ### 5. Anti-Cheating and Exam Controls
 
@@ -61,15 +61,25 @@ Automatic collection, accumulating repeated mistakes, error-cause tagging, simil
 - Paper exams support attempt limits, time limits, and time windows, with leaderboards toggleable;
 - In exam mode, answers submit automatically when the countdown ends — no manual collection needed.
 
+### 6. Growth Center and Learning Paths
+
+The learning path orders knowledge points to conquer by weakness, each step paired with an AI knowledge-point explainer card and targeted practice; mastery decays automatically when a topic goes unpracticed for a long time, so recommendations always reflect the current state. The Growth Center generates an AI weekly learning report every Monday (highlights, gaps, suggestions for the coming week), 12 achievement badges track learning milestones, and AI can even compose a custom practice set on the spot from a student's weak points — generate and go.
+
+### 7. In-Class Quick Tests and Multi-Channel Reminders
+
+Teachers launch an in-class quick test by picking knowledge points: the system assembles the paper instantly and delivers it to the class, answering progress streams to the screen live, and a score report (score distribution / rankings / per-question accuracy) is one click away for in-class review. Four event types — reviews due, homework chasing, grading done, and weekly reports — reach students via in-site messages, WeChat subscription messages, and email; schools enable channels in the admin console, and students choose their own notification preferences.
+
 ## 3. Three Clients at a Glance
 
 | Client | Form | Main users | Core capabilities |
 |----|------|-----------|----------|
-| Student | WeChat Mini Program / H5 | Students | Today's Tasks, smart / focused practice, five answering modes, proctored exams, wrong-question notebook, review plan, post-exam review, learning analytics report, AI tutor, homework, favorites and notes |
-| Teacher | Web admin console | Teachers | Subject and knowledge-point management, class join codes, question bank building, paper assembly and publishing controls, homework and submission chasing, Grading Center, learning analytics dashboard, printable wrong-question sheets |
-| Admin | Web admin console | School / institution administrators | Data dashboard, organization and people, roles and permissions, dictionaries / multilingual / files / tasks, audit logs, AI infrastructure |
+| Student | WeChat Mini Program / H5 | Students | Today's Tasks, smart / focused practice, five answering modes, proctored exams, wrong-question notebook, review plan, post-exam review, learning analytics report, Growth Center, learning paths, photo-captured wrong questions, in-class quick tests, AI tutor, homework, favorites and notes |
+| Teacher | Web admin console | Teachers | Subject and knowledge-point management, class join codes, question bank building, paper assembly and publishing controls, in-class quick tests, homework and submission chasing, tiered homework, Grading Center, disengagement-warning dashboard, learning analytics, analytics export, printable wrong-question sheets |
+| Admin | Web admin console | School / institution administrators | Data dashboard, organization and people, roles and permissions, dictionaries / multilingual / files / tasks, WeChat and email notification settings, audit logs, AI infrastructure |
 
 Data flows in real time across the three clients: every paper and homework a teacher publishes, every answer and wrong question a student produces, feeds immediately into the Grading Center and the learning analytics dashboard, closing the loop of "teach — practice — assess — remediate".
+
+Parents also get a lightweight read-only entry: a student generates a 10-minute invitation code in the student client, and once a parent binds with it, they can view their child's learning overview, weekly reports, and homework completion at any time — weekly reports are pushed to parents automatically when generated.
 
 ## 4. A Complete Teaching and Learning Journey
 
@@ -99,6 +109,12 @@ Taking a unit test as an example, here is how the three clients work together:
 | Similar-problem recommendations | Recommends same-type problems based on semantic similarity |
 | AI conversational tutoring | Personalized Q&A grounded in the wrong-question notebook, with a guided mode |
 | OCR problem recognition | Photographs problems and enters the recognized text into the question bank |
+| Error-cause inference | When objective questions are answered wrong, AI infers the cause and pre-fills it; student-entered tags always take priority |
+| AI comment polishing | Rewrites a teacher's comment drafts to be more professional and specific |
+| Correction suggestions | When students report a problem, AI analyzes the issue and drafts a fix for the teacher's reference |
+| Knowledge-point explainer cards and study handouts | Generates core concepts, worked examples, and common pitfalls from the textbook knowledge base — shared by teachers and students, printable |
+| AI conversational practice questions | Composes practice sets on the spot from a student's weak points; questions stay private to each student |
+| Student photo-captured wrong questions | Photograph off-campus paper problems; AI recognizes them into the personal wrong-question notebook and generates a review plan |
 
 ## 6. Applicable Scenarios
 
@@ -108,7 +124,7 @@ Covers the full flow of daily homework, unit tests, and pre-exam review: teacher
 
 ### Training Institutions
 
-Build question banks by subject and knowledge point and assemble tests quickly; class leaderboards, AI class reports, and printable wrong-question sheets are powerful tools for demonstrating teaching results, communicating with parents, and driving renewals.
+Build question banks by subject and knowledge point and assemble tests quickly; class leaderboards, AI class reports, and printable wrong-question sheets are powerful tools for demonstrating teaching results — and weekly reports pushed straight to parents make progress visible every week, a direct lever for parent communication and renewals.
 
 ### Corporate Training
 

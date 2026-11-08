@@ -452,11 +452,35 @@ export default {
             ]
         }
     ],
+    "/en/mes/": [
+        {
+            "text": "GoWind MES",
+            "children": [
+                "/en/mes/intro.md"
+            ]
+        }
+    ],
     "/en/wms/": [
         {
             "text": "GoWind WMS",
             "children": [
                 "/en/wms/intro.md"
+            ]
+        }
+    ],
+    "/en/cdc/": [
+        {
+            "text": "GoWind CDC",
+            "children": [
+                "/en/cdc/intro.md"
+            ]
+        }
+    ],
+    "/en/sdp/": [
+        {
+            "text": "GoWind SDP",
+            "children": [
+                "/en/sdp/intro.md"
             ]
         }
     ],

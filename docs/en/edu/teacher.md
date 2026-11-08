@@ -32,6 +32,12 @@ The question bank is the platform's core asset, and the teacher side provides a 
 | OCR photo-based question import | Photograph paper exams or study aids and the questions are recognized in — fast digitization of existing question inventories |
 | AI illustration | AI illustrates questions automatically, saving manual drawing |
 | Similar-problem search | Search for similar problems semantically to avoid duplicate entries of the same type |
+| Semantic question search | Type natural language to find problems by meaning, not keyword matching — faster dedup checks and finding same-type problems |
+| Reference statistics | See which papers and homework reference a question in one click — check the blast radius before editing |
+| Difficulty calibration | Compares actual accuracy against the tagged difficulty and suggests raising/lowering outliers |
+| Correction feedback queue | Student-reported problem issues enter a processing queue; AI drafts a suggested fix for reference, and students are notified of the outcome |
+| Explanation video attachment | Attach micro-lesson videos to questions; students watch them right below the analysis |
+| Knowledge-point study handouts | AI generates knowledge-point handouts (core concepts / worked examples / common pitfalls) from the textbook knowledge base, printable for students |
 | Draft/published states | Questions are saved as drafts first and enter the usable pool only after teacher review and confirmation |
 
 ::: tip Recommended bank-building flow
@@ -40,13 +46,15 @@ Paper exams from past years → OCR photo import → AI-generated supplementary 
 
 ## 3. Paper Assembly and Publishing Controls
 
-### Three Ways to Assemble a Paper
+### Ways to Assemble a Paper
 
 | Method | How it works | Suitable scenario |
 |------|------|----------|
 | Manual assembly | Pick problems from the bank one by one, with full control over the paper's structure | Formal tests, curated papers |
 | AI paper assembly | Set knowledge-point and difficulty requirements; the system draws questions automatically and **balances them evenly**, assembling the paper in one click | Daily practice, fast paper creation |
 | Re-practice paper | **Generate a re-practice paper from the class's high-frequency wrong questions in one click** | Organizing re-training around class-wide common errors |
+| Duplicate a paper | Copy a colleague's paper or an old one into your own draft in one click, edit, then publish | Lesson-prep collaboration, paper revisions |
+| In-class quick test | Pick a class and knowledge points to assemble and deliver a test instantly; watch answering progress on a live board, then generate a score report (score distribution / rankings / per-question accuracy) in one click for in-class review | In-class checks, real-time feedback |
 
 ### Publishing Controls
 
@@ -58,6 +66,7 @@ When publishing a paper, multiple controls can be set to fit different teaching 
 | Attempt limit | Restricts the number of attempts | Formal tests allow one attempt only |
 | Time limit | Restricts the duration of each attempt | Mimicking the pace of a real exam |
 | Leaderboard toggle | Decides whether a leaderboard is generated and shown | Keep it off for daily practice to ease ranking pressure |
+| Make-up authorization | Reset attempts on a limited-attempt exam for specific students without touching everyone else's limits | Sick leave, special make-up cases |
 
 ::: warning Turn off leaderboards for after-class practice
 Leaderboards suit tests, where they spark competition; for daily practice we recommend turning them off so students don't grind for rank while neglecting corrections and review. Combining the leaderboard with attempt and time limits balances motivation and fairness.
@@ -70,9 +79,11 @@ Homework = **class + paper + deadline**, and assigning and managing it is straig
 - When assigning, choose the class, attach the paper, and set the deadline;
 - **Real-time completion statistics**: submission progress is visible in real time, no asking students one by one;
 - **One-click chasing**: send a submission reminder to everyone who hasn't finished, in one click;
+- **Automatic deadline reminders**: 24 hours before the deadline, the system automatically reminds every student who hasn't submitted (in-site + WeChat), once per assignment — the system backstops even if the teacher forgets to chase;
+- **Weak-point extra practice (tiered homework)**: for assignments with low completion, generate a personalized extra-practice paper per unsubmitted student based on their weak knowledge points (automatically avoiding the original homework's questions) and assign it as personal homework; progress is visible per student in the assignment details;
 - **Homework extensions**: for special cases, adjust the deadline and the student side updates in sync.
 
-On the student side, homework appears in "Today's Tasks" and the homework list (see the [Student Client Guide](/en/edu/student.md)), and items approaching their deadline are also aggregated into the to-dos as reminders.
+On the student side, homework appears in "Today's Tasks" and the homework list (see the [Student Client Guide](/en/edu/student.md)); the system auto-reminds non-submitters 24 hours before the deadline, and items approaching their deadline are also aggregated into the to-dos.
 
 ## 5. Grading Center
 
@@ -81,8 +92,12 @@ The Grading Center is the module teachers use most often, built on the idea of "
 | Capability | Description |
 |------|------|
 | AI grading results | Objective questions are already scored instantly; subjective questions get an AI first pass with comments attached |
+| Paragraph-level annotations | AI quotes the student's original text and comments paragraph by paragraph — what's good and what's off at a glance |
+| Photo answer sheets | Handwritten subjective answers photographed by students are graded by AI against the image content |
 | One-click accept | For questions where the AI score is acceptable, **accept with one click and finalize in bulk**, freeing teachers from repetitive work |
 | Manual score override | Override scores you disagree with; related statistics **recalculate automatically** after any change — no manual adjustments |
+| AI comment polishing | When the words won't come, let AI rewrite a comment draft to be more professional and specific |
+| Answer timing & rushed-answer flags | Time spent per question is visible per item; answers that were too fast *and* wrong are flagged automatically — a clue for spotting guessing or copying |
 | Page-switch count alerts | See each examinee's page-switch count, with automatic alerts on abnormal counts to help judge exam discipline |
 
 ::: warning AI scores are suggestions, not verdicts
@@ -101,6 +116,14 @@ The learning analytics dashboard turns class answering data into charts and repo
 | Dual-axis 30-day trend chart | Watch answer volume and accuracy trends together |
 | Error-cause distribution | Understand the makeup of errors: carelessness, unclear concepts, or misreading the question |
 | Suspect-question alerts | Automatic alerts when an AI-generated question's error rate is abnormal, prompting review of the question's own quality |
+| Disengagement warnings | Students with 7 consecutive days without answers or a notable accuracy drop enter the warning list automatically; send encouragement reminders one by one or in bulk |
+| Multi-class knowledge-point comparison | For cross-class teaching, per-class accuracy is broken down by weakest knowledge point — which class is falling behind where, at a glance |
+| Mastery matrix | A student × knowledge-point mastery grid shaded in four tiers — pinpoint exactly who is weak on what |
+| Review-execution board | Class review-plan completion and the overdue student list, with one-click reminders — closing the teacher-side blind spot in the review loop |
+| Variant drill effectiveness | An evidence-based comparison of accumulated wrong-answer counts vs variant accuracy — whether AI's "draw inferences" actually works, in data |
+| Paper quality analysis | Post-exam per-question score rates and discrimination, with automatic flags for too-hard, too-easy, or low-discrimination questions |
+| Single-student deep dive | Open any student from the class roster to see their full learning picture — enough for a one-on-one or a parent meeting |
+| Analytics export | Export a per-student analytics summary by class in one click, for offline teaching research and record-keeping |
 | AI class report | AI generates a Markdown-format class learning report, ready for teaching research and parent communication |
 | Printable wrong-question sheets | Generate printable wrong-question sheets by class or student for paper-based re-practice |
 
@@ -115,7 +138,8 @@ Stringing the capabilities above together, a "unit" teaching cycle typically run
 | Stage | Teacher action | Platform support |
 |------|----------|----------|
 | Pre-class bank building | Reuse past exams + add new questions | OCR photo import, AI question generation, semantic deduplication, draft review |
-| Unit practice | Assign daily practice homework | Class + paper + deadline, real-time completion statistics, one-click chasing |
+| Unit practice | Assign daily practice homework | Class + paper + deadline, real-time completion statistics, one-click chasing, automatic deadline reminders |
+| In-class quick test | Real-time in-class checking | Assemble by knowledge point and deliver instantly; watch progress live, score report the moment it ends |
 | Unit test | Run a formal test | Time window + attempt limit + time limit, shuffled questions and options, page-switch alerts |
 | Grading and review | Grade and hold the in-class review | AI grading + one-click accept to finalize; high-frequency wrong-question ranking and error-cause distribution aid lesson prep |
 | Review and consolidation | Re-train weak points | Generate a re-practice paper from high-frequency wrong questions in one click; the system schedules student reviews automatically along the forgetting curve |
@@ -133,6 +157,8 @@ The admin side (system administration) serves school / institution administrator
 | Organization and people | Organizational structure and personnel management for the school / institution |
 | Roles and permissions (RBAC) | Console features and data access assigned by role — teachers, academic staff, and administrators each stay in their lane |
 | Dictionaries / multilingual / files / tasks | Platform base configuration, files, and background task management |
+| WeChat service settings | Enable student WeChat subscription-message reminders (reviews due / homework chasing / grading done / weekly reports) — fill in the Mini Program and template info to activate; in-site messages work fine without it |
+| Email service settings | After configuring an email service, grading completions and weekly learning reports can reach students by email; nothing else is affected without it |
 | Audit logs | Six categories of audit logs keep key operations traceable end to end |
 | AI infrastructure | Model provider management (keys stored encrypted), knowledge base RAG, AI conversation, natural-language data queries, usage statistics, and content safety |
 

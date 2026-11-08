@@ -115,6 +115,7 @@ GoWind IoT（风行物联网）是基于 Go **微服务架构**的物联网设�
 |---|---|
 | **Web 管理控制台** | 浏览器即可完成设备管理、规则配置、告警处置与大屏搭建 |
 | **Qt6 桌面上位机** | 深色控制台风格，适配监控值守场景；支持大屏 Kiosk 轮播模式常驻展示 |
+| **Flutter 移动 / 桌面客户端** | 一套代码编译 iOS / Android / Web / macOS / Windows / Linux 六端，深色控制台风格与 Qt6 上位机同源；SSE 实时推送，告警与遥测随时随地掌上可见 |
 | **Web 大屏投屏** | 数据大屏通过浏览器直接投屏到指挥中心 / 展厅大屏 |
 
 ## 四、界面预览
@@ -132,6 +133,18 @@ GoWind IoT（风行物联网）是基于 Go **微服务架构**的物联网设�
 | ![智慧风电大屏](/assets/images/iot/shot-screenplayer.png) | ![通知收件箱](/assets/images/iot/shot-inbox.png) |
 | :---: | :---: |
 | *智慧风电数据大屏* | *通知收件箱* |
+
+### Flutter 移动端
+
+总览驾驶舱、遥测分析与设备管理随身携带——告警与遥测经 SSE 实时推送到手机，外出值守不再盯大屏：
+
+| ![总览驾驶舱](/assets/images/iot/app-overview.png) | ![遥测分析](/assets/images/iot/app-telemetry.png) |
+| :---: | :---: |
+| *总览驾驶舱：设备在线与活跃告警一屏掌握* | *遥测分析：多 key 历史叠加曲线* |
+
+| ![设备管理](/assets/images/iot/app-devices.png) |  |
+| :---: | :---: |
+| *设备管理：在线状态实时可见* |  |
 
 ## 五、部署与交付
 

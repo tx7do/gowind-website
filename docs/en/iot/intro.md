@@ -115,6 +115,7 @@ All of these scenarios are configured with standard platform capabilities — no
 |---|---|
 | **Web management console** | Device management, rule configuration, alert handling, and dashboard building all from the browser |
 | **Qt6 desktop console** | Dark console styling suited to monitoring duty; supports a dashboard Kiosk carousel mode for always-on display |
+| **Flutter mobile / desktop client** | One codebase compiled for iOS / Android / Web / macOS / Windows / Linux, with dark console styling shared with the Qt6 console; SSE real-time push keeps alerts and telemetry at hand on the go |
 | **Web dashboard casting** | Data dashboards cast straight from the browser to command-center / exhibition-hall screens |
 
 ## 4. UI Preview
@@ -132,6 +133,18 @@ The following are actual screenshots of the Qt6 desktop console:
 | ![Smart wind power dashboard](/assets/images/iot/shot-screenplayer.png) | ![Notification inbox](/assets/images/iot/shot-inbox.png) |
 | :---: | :---: |
 | *Smart wind power data dashboard* | *Notification inbox* |
+
+### Flutter Mobile Client
+
+The overview cockpit, telemetry analysis, and device management travel with you — alerts and telemetry are pushed in real time over SSE, so field duty no longer means staring at a big screen:
+
+| ![Overview cockpit](/assets/images/iot/app-overview.png) | ![Telemetry analysis](/assets/images/iot/app-telemetry.png) |
+| :---: | :---: |
+| *Overview cockpit: device online status and active alerts on one screen* | *Telemetry analysis: multi-key overlaid history curves* |
+
+| ![Device management](/assets/images/iot/app-devices.png) |  |
+| :---: | :---: |
+| *Device management: online status visible in real time* |  |
 
 ## 5. Deployment and Delivery
 

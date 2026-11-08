@@ -4,9 +4,11 @@ GoWind Edu is an **AI education platform** streamlined and rebuilt on the GoWind
 
 GoWind Edu is a closed-source commercial product, delivered and deployed for schools and institutions **on-premise**: the system runs in the customer's own server environment, so teaching data stays with the customer.
 
-::: tip Product screenshots coming soon
-For now this document introduces the product with text and tables; product UI screenshots will be added soon — stay tuned.
-:::
+## Product UI
+
+The admin "Data Dashboard" gives a one-screen view of teaching: question bank, papers, subjects, and class sizes at a glance; answer volume, overall accuracy, active students, and pending grading aggregated in real time; top wrong questions and weak knowledge points surfaced automatically as direct leads for teaching research.
+
+![GoWind Edu admin data dashboard](/assets/images/edu/dashboard.png)
 
 ## 1. Positioning: A Learning Loop with an AI Tutor
 

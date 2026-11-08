@@ -4,6 +4,10 @@ The student client comes in two forms, **WeChat Mini Program** and **H5**, usabl
 
 This guide follows a real learning journey: registration → Today's Tasks → practice → answering and anti-cheating → wrong-question notebook → review plan → post-exam review → learning analytics report → Growth Center → AI tutor → homework, favorites, and notes → WeChat reminders and parent access.
 
+The student home screen, "Today's Tasks": weak-point recommendations put today's most worthwhile knowledge points up front, while check-in streaks and weekly goals help learning find its rhythm:
+
+![GoWind Edu student H5 home](/assets/images/edu/student-home.png)
+
 ::: tip About accounts
 Student accounts support **self-registration**: after deployment, the school / institution publishes the access URL; students enter through it, register and sign in, then join their class with a class join code. Teacher accounts are created centrally by the administrator — students don't need to worry about them.
 :::

@@ -75,6 +75,7 @@ The products below are closed-source and commercially licensed, delivered on-pre
 | Product | Positioning | Core Capabilities |
 | --- | --- | --- |
 | [GoWind IM](/en/im/intro.md) | Instant messaging | Private/group chat, audio/video, office collaboration and security controls; a free Community edition to start, Professional/Enterprise editions licensed per account |
+| [GoWind CRM](/en/crm/intro.md) | B2B sales CRM | Full-loop leads → opportunities → quotations → contracts → payments; inquiry-mailbox auto capture, public pools, approval workflows, data-scope policies and audit compliance, delivered on-premises |
 | [GoWind IoT](/en/iot/intro.md) | Internet of Things | MQTT/OPC-UA/Modbus device access, video surveillance, rules engine, data dashboards with 51 components |
 | [GoWind Edu](/en/edu/intro.md) | AI education | AI question bank, online practice, wrong-answer notebook, SM-2 adaptive review, AI tutor and Growth Center, parent weekly reports — the full learning loop covered |
 | [GoWind MES](/en/mes/intro.md) | Manufacturing execution | One-click order-to-work-order, multi-objective weighted scheduling, scan-based reporting with piece-rate wages, bidirectional batch traceability, SPC quality and predictive maintenance |

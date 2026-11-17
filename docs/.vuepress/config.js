@@ -46,6 +46,7 @@ const navbarZh = [
                 text: '商业产品',
                 children: [
                     {text: 'GoWind IM（即时通讯）', link: '/im/intro.md'},
+                    {text: 'GoWind CRM（B2B 销售管理）', link: '/crm/intro.md'},
                     {text: 'GoWind IoT（物联网）', link: '/iot/intro.md'},
                     {text: 'GoWind Edu（AI 教育）', link: '/edu/intro.md'},
                     {text: 'GoWind MES（制造执行）', link: '/mes/intro.md'},
@@ -94,6 +95,7 @@ const navbarEn = [
                 text: 'Commercial',
                 children: [
                     {text: 'GoWind IM (Instant Messaging)', link: '/en/im/intro.md'},
+                    {text: 'GoWind CRM (B2B Sales)', link: '/en/crm/intro.md'},
                     {text: 'GoWind IoT (IoT Platform)', link: '/en/iot/intro.md'},
                     {text: 'GoWind Edu (AI Education)', link: '/en/edu/intro.md'},
                     {text: 'GoWind MES (Manufacturing Execution)', link: '/en/mes/intro.md'},

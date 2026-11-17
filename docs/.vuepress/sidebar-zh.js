@@ -452,6 +452,14 @@ export default {
             ]
         }
     ],
+    "/crm/": [
+        {
+            "text": "GoWind CRM",
+            "children": [
+                "/crm/intro.md"
+            ]
+        }
+    ],
     "/mes/": [
         {
             "text": "GoWind MES",

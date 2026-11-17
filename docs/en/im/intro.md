@@ -9,7 +9,7 @@ GoWind IM is **closed-source commercial software delivered on-premise**: the sys
 - **IT decision makers**: evaluate feature coverage, security controls, and on-premise delivery capability;
 - **Pre-sales / implementation consultants**: quickly grasp the full product picture, edition differences, and commercial terms.
 
-This page is organized around the official *Product Feature Specification* v1.0; for operation-level instructions on each feature, see the [Feature Manual](/en/im/features.md).
+This page is organized around the official *Product Feature Specification* v1.0 (features synced to the repository state as of 2026-11-16); for operation-level instructions on each feature, see the [Feature Manual](/en/im/features.md).
 :::
 
 ## 1. Core Highlights
@@ -18,10 +18,12 @@ This page is organized around the official *Product Feature Specification* v1.0;
 
 - **One-on-one chats and 10,000-member groups**: one-to-one conversations and groups of up to 10,000 members, with real-time message delivery and multi-device sync;
 - **Channels and chat rooms**: channels provide broadcast-style reach to the whole company, while chat rooms suit lightweight scenarios such as live-event interaction and temporary collaboration;
-- **Secret chat mode**: messages can be set to auto-recall when the timer expires, screenshots taken by the other party trigger an immediate alert, and a hidden watermark is overlaid for traceability — meeting the needs of confidential communication;
+- **Secret chat mode**: messages can be set to auto-recall on a timer or burn after read, screenshots taken by the other party trigger an immediate alert, and a hidden watermark is overlaid for traceability — meeting the needs of confidential communication;
 - **Topic threads**: group discussions can be aggregated into topics, so important conclusions are no longer drowned out by chat noise;
+- **Group collaboration tools**: group polls (with anonymous voting and deadline withdrawal), group chains, group albums, and task check-ins — group affairs handled in one place;
+- **File delivery receipts**: require confirmation for important files, see signing status at a glance, and nudge unread recipients in one click; large files resume from breakpoints and whole folders send in one go;
 - **Scheduled messages**: messages can be scheduled for delivery at a specified future time;
-- **Full-text search**: search historical messages across conversations; finding a file or a decision takes one search;
+- **Full-text search**: search historical messages across conversations, with in-conversation filtering by documents / images / videos — finding a file or a decision takes one search;
 - **Real-time location sharing**: start live location sharing for field work and off-site scenarios;
 - **Sticker store**: a built-in sticker store makes team expression richer;
 - **Multi-device roaming**: chat history roams and syncs automatically across phones, desktops, and other devices.
@@ -29,8 +31,10 @@ This page is organized around the official *Product Feature Specification* v1.0;
 ### 2. Audio/Video Conferencing
 
 - **1-on-1 calls**: start point-to-point audio/video calls with one click from the chat window;
-- **Multi-party meetings**: host controls supported — mute members, remove members, lock the meeting, and more;
+- **Multi-party meetings**: invitees are notified as soon as a meeting is created, with host controls such as muting members, removing members, and locking the meeting;
 - **Screen sharing**: share your screen when presenting documents or reviewing proposals;
+- **Remote assist viewing**: one-on-one screen assist where the other party watches only (view-only, no control), making remote guidance safer;
+- **In-meeting file sharing**: share cloud drive files during the meeting; participants click to view;
 - **Cloud recording and meeting playback**: meetings are recorded to the cloud as MP4, so absent colleagues can catch up anytime;
 - **Group live streaming with live comments**: go live inside a group with real-time comment interaction — ideal for town halls and training;
 - **Speech to text**: voice messages and calls are automatically transcribed, making meeting notes much easier.
@@ -41,24 +45,30 @@ This page is organized around the official *Product Feature Specification* v1.0;
 - **AI conversation summaries**: turn long chat histories into a summary with one click and quickly grasp conclusions and to-dos;
 - **AI tickets**: issues spotted in conversations can be turned into tickets handled with AI assistance;
 - **Conversation-level auto translation**: real-time translation for cross-language communication — global teams collaborate without barriers;
-- **Enterprise knowledge base RAG**: connect your own company documents, and AI answers questions based on enterprise knowledge;
+- **Enterprise knowledge base RAG**: connect your own company documents; two-stage retrieval with semantic search plus reranking, backed by a privately deployable vector store, means AI answers questions grounded in enterprise knowledge;
+- **AI app orchestration**: compose AI apps on a visual canvas — LLM, HTTP, and script nodes combined freely, with conditional branches, parallel execution, and reusable subflows, plus version history for rollback;
 - **AI stand-up minutes**: daily stand-up minutes are generated automatically;
 - **Per-tenant token quotas**: administrators can set AI usage quotas for different tenants, keeping costs under control.
 
 ### 4. Office Collaboration
 
-- **OA approvals**: six common approval categories built in, paired with a visual process designer so business staff can adjust workflows themselves;
-- **Attendance check-in**: GPS + WiFi dual-location verification with shift scheduling support;
-- **Work reports**: daily and weekly reports submitted and aggregated online;
+- **OA approvals**: six common approval categories built in with CC notifications, paired with a visual process designer so business staff can adjust workflows themselves;
+- **Attendance check-in**: GPS + WiFi dual-location verification with shift scheduling and field check-in support;
+- **Work reports**: daily and weekly reports submitted and aggregated online, with manager read / return-for-rewrite review;
+- **Event RSVP**: invitees accept, tentatively accept, or decline schedule invitations; rescheduling re-opens confirmation with automatic nudges before start;
+- **To-do center**: approval to-dos, CC notifications, and external system to-dos aggregated in one place;
+- **Expense ledger**: advance payment registration, reimbursement workbench, budget control, and petty cash ledgers — every expense traceable;
 - **Company announcements**: important notices reach everyone precisely;
 - **OKR goal management**: visual goal alignment trees, cycle scoring, and automatically generated AI cycle summaries;
 - **HR onboarding and account provisioning**: new employees get their accounts set up in one step;
 - **Base multi-dimensional tables**: business staff can build their own data ledgers and organize business data flexibly;
-- **Calendar and meeting room booking**: schedules, meetings, and meeting room resources arranged in one place.
+- **Calendar and meeting room booking**: schedules, meetings, and meeting room resources arranged in one place, with external mailbox (IMAP / SMTP) and external calendar integration.
 
 ### 5. Collaborative Documents and Knowledge Base
 
 - **Real-time collaborative editing**: multiple people edit a document at the same time, with changes visible instantly;
+- **Online Office editing**: edit, preview, and co-annotate Word / Excel / PPT right in the browser, with changes saved back to the cloud drive automatically;
+- **Cloud drive**: a personal drive plus group shared spaces, with instant upload, resumable transfer, share links, and quota management;
 - **Knowledge spaces**: organize knowledge by team and project, continuously accumulating company assets;
 - **Canvas frame playback**: whiteboard canvases support frame-by-frame playback of the creation process, making review and retrospective clear at a glance.
 
@@ -96,11 +106,14 @@ This page is organized around the official *Product Feature Specification* v1.0;
 ### 11. Security and Control
 
 - **Conversation watermarks**: watermarks overlaid in the client make leaked screenshots traceable;
-- **Login risk control**: real-time alerts for logins from unusual locations;
+- **Login risk control**: real-time alerts for logins from unusual locations, with two-factor authentication (TOTP / SMS), SMS verification-code sign-in, and a sign-in IP allowlist for the admin console;
 - **Device management**: centrally manage logged-in devices, with remote sign-out support;
-- **Sensitive-word filtering**: detection and blocking of sensitive words in message content;
+- **Classification and executive mode**: users and files gated across Secret / Confidential / Top Secret levels; executive profiles masked;
+- **Sending controls**: forbid sending files / voice / video / images by role, with per-tenant file-type allow/block lists;
+- **Sensitive-word filtering**: detection and blocking of sensitive words in message content, plus automatic scanning of sent text files and images with hits blocked and recorded;
+- **Client feature switches**: administrators can turn off client capabilities such as the cloud drive, group polls, or the workbench on demand, with policies taking effect immediately;
 - **Audit logs**: full traceability of sensitive operations;
-- **Chat record retention, archiving, and export**: meets industry retention compliance requirements, with archiving and export support.
+- **Chat record retention, archiving, and export**: meets industry retention compliance requirements with configurable file and log retention days, plus archiving and export support.
 
 ### 12. Data Reports
 
@@ -162,9 +175,9 @@ GoWind IM is licensed **by account count**. The license uses **Ed25519 offline s
 
 | Edition | What's included | Best for |
 |---|---|---|
-| **Community Edition** | 18 core services: IM communication, audio/video, office collaboration, security controls, and other foundational capabilities | Small teams getting started and internal trials |
-| **Professional Edition** | Everything in Community + 11 more items: R&D collaboration, group bots, visitor customer service, and more | Teams that need R&D collaboration and external customer service |
-| **Enterprise Edition** | Everything in Professional + 8 more items: CRM, ERP, and other business-operation capabilities | Large organizations that need communication and business in one platform |
+| **Community Edition** | 20 foundational services: IM communication, AI capability center, office collaboration, security controls, and other foundational capabilities | Small teams getting started and internal trials |
+| **Professional Edition** | Everything in Community + 16 features: cloud drive, group bots, audio/video conferencing, collaborative documents, visitor customer service, R&D collaboration, HR, online Office editing, and more | Teams that need R&D collaboration and external customer service |
+| **Enterprise Edition** | Everything in Professional + 6 features: OA approvals, ERP, audit logs, open platform (OAuth2 / Webhooks), CRM, and enterprise directory integration (LDAP / AD / SSO) | Large organizations that need communication and business in one platform |
 
 ::: tip Seamless license renewal
 After a license expires, a **7-day grace period** keeps the business running; renewal only requires **replacing the license file** — **no service restart** needed.
@@ -173,6 +186,7 @@ After a license expires, a **7-day grace period** keeps the business running; re
 ## 5. Delivery and Deployment
 
 - **One-step on-premise delivery**: available as Docker Compose or binary distributions, with installation scripts, upgrade manuals, and SHA256 integrity checks — ready to run out of the box;
+- **Private AI deployment**: local LLMs (Ollama) and private vector stores work out of the box, so AI inference and knowledge-base retrieval never leave the intranet;
 - **Xinchuang compatibility**: supports arm64 and is compatible with Xinchuang environments such as Kunpeng and Kylin;
 - **Data locality**: all data is stored on the company's own servers, with no dependency on external cloud services.
 

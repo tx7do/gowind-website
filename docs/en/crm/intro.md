@@ -62,7 +62,41 @@ GoWind CRM is an **enterprise-grade B2B sales CRM built for on-premise deploymen
 | Platform | Approval engine, data-scope policies, custom fields, sales targets, after-sales tickets, xlsx report export, Webhooks |
 | Security and compliance | Five audit logs, MFA / OAuth / sign-in policies, multi-tenancy, multilingual UI |
 
-## 3. Use Cases
+## 3. UI Preview
+
+### Sign-in and Workspace
+
+| ![Login page](/assets/images/crm/login.png) | ![Workspace](/assets/images/crm/workspace.png) |
+| :---: | :---: |
+| *Login: account / enterprise account / multi-tenant code sign-in* | *Workspace: to-dos, business snapshot, and sales rankings on one screen* |
+
+### Acquisition and Leads
+
+| ![Lead management](/assets/images/crm/leads.png) | ![Inquiry management](/assets/images/crm/inquiries.png) |
+| :---: | :---: |
+| *Leads: convert / assign / hand over in one flow* | *Inquiries: mailbox auto-capture with distribution tracking* |
+
+### Customers and Opportunities
+
+| ![Customer management](/assets/images/crm/customers.png) | ![Public pools](/assets/images/crm/pools.png) |
+| :---: | :---: |
+| *Customers: sharing / handover / dedup / batch actions* | *Public pools: rule-based recall and claims to reactivate dormant customers* |
+
+| ![Follow-up calendar](/assets/images/crm/followup-calendar.png) | ![Opportunity kanban](/assets/images/crm/opportunity-board.png) |
+| :---: | :---: |
+| *Follow-up calendar: monthly view of follow-up plans and to-dos* | *Opportunity kanban: drag deals across stages — amounts and win rates at a glance* |
+
+### Deals and Payments
+
+| ![Quotation management](/assets/images/crm/quotations.png) | ![Contract management](/assets/images/crm/contracts.png) |
+| :---: | :---: |
+| *Quotations: line-item pricing, approval, and export* | *Contracts: templates, approval submission, and expiry reminders* |
+
+| ![Payment management](/assets/images/crm/payments.png) | ![Analytics](/assets/images/crm/analytics.png) |
+| :---: | :---: |
+| *Payments: collection plans, overdue ledger, and weighted forecast* | *Analytics: funnel, trend, and ranking perspectives* |
+
+## 4. Use Cases
 
 ### Foreign trade, from inquiry to deal
 
@@ -76,7 +110,7 @@ Public pools recycle dormant customers by rule; sales targets decompose down to 
 
 Fully on-premise deployment keeps sales data inside the corporate intranet; data-scope policies plus five audit logs satisfy internal control and compliance reviews.
 
-## 4. Tech Stack and Deployment
+## 5. Tech Stack and Deployment
 
 The backend is built on the go-kratos microservice framework (a three-service architecture: admin BFF / app BFF / core business service), Protobuf-first contracts, and the Ent ORM;
 the frontend is Vue3 + TypeScript (Vben Admin monorepo); Docker Compose brings up all dependencies with one command for both local and production use.
@@ -88,12 +122,12 @@ the frontend is Vue3 + TypeScript (Vben Admin monorepo); Docker Compose brings u
 | Infrastructure | Redis, S3-compatible object storage, etcd, OpenTelemetry, Asynq |
 | Deployment | Docker Compose one-command dependencies; private binary delivery supported |
 
-## 5. Versions and Roadmap
+## 6. Versions and Roadmap
 
 Phase-one MVP capabilities (leads, customers and pools, opportunity kanban, follow-ups, reports, data permissions, approvals) and phase-two capabilities (quotations, contracts, payments, sales targets, after-sales tickets) are all live;
 phase three is planned: AI lead scoring, sales forecasting, PaaS custom objects, BI dashboards, and deep IM integration.
 
-## 6. Contact Us
+## 7. Contact Us
 
 GoWind CRM is **closed-source commercial software delivered on-premise**. For licensing, trials, and deployment:
 

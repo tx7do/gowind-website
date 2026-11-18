@@ -62,7 +62,41 @@ GoWind CRM 是一款**私有化部署友好的企业级 B2B 销售 CRM**：以�
 | 平台能力 | 审批流引擎、数据权限策略、自定义字段、绩效目标、售后工单、报表 xlsx 导出、Webhook |
 | 安全合规 | 五类审计日志、MFA / OAuth / 登录策略、多租户、多语言 |
 
-## 三、适用场景
+## 三、界面预览
+
+### 登录与工作台
+
+| ![登录页](/assets/images/crm/login.png) | ![工作台](/assets/images/crm/workspace.png) |
+| :---: | :---: |
+| *登录页：支持账号 / 企业账号 / 多租户编码登录* | *工作台：待办、业务速览与销售排行一屏总览* |
+
+### 获客与线索
+
+| ![线索管理](/assets/images/crm/leads.png) | ![询盘管理](/assets/images/crm/inquiries.png) |
+| :---: | :---: |
+| *线索管理：转换 / 分配 / 转客户一条龙* | *询盘管理：询盘邮箱自动接入与分发跟踪* |
+
+### 客户与商机
+
+| ![客户管理](/assets/images/crm/customers.png) | ![公海池](/assets/images/crm/pools.png) |
+| :---: | :---: |
+| *客户管理：共享 / 交接 / 查重 / 批量操作* | *公海池：规则回收与领取，沉淀客户再激活* |
+
+| ![跟进日历](/assets/images/crm/followup-calendar.png) | ![商机看板](/assets/images/crm/opportunity-board.png) |
+| :---: | :---: |
+| *跟进日历：按月查看跟进安排与待办* | *商机看板：阶段拖拽推进，金额与赢率一目了然* |
+
+### 交易与回款
+
+| ![报价管理](/assets/images/crm/quotations.png) | ![合同管理](/assets/images/crm/contracts.png) |
+| :---: | :---: |
+| *报价管理：行项报价、送审与导出* | *合同管理：模板、送审与到期提醒* |
+
+| ![回款管理](/assets/images/crm/payments.png) | ![数据分析](/assets/images/crm/analytics.png) |
+| :---: | :---: |
+| *回款管理：收款计划、逾期台账与加权预测* | *数据分析：漏斗、趋势与排行多维透视* |
+
+## 四、适用场景
 
 ### 外贸获客到成交
 
@@ -76,7 +110,7 @@ GoWind CRM 是一款**私有化部署友好的企业级 B2B 销售 CRM**：以�
 
 全平台私有化部署，销售数据不出企业内网；数据权限策略 + 五类审计日志满足内控与合规审查。
 
-## 四、技术栈与部署
+## 五、技术栈与部署
 
 后端基于 go-kratos 微服务框架构建（后台 BFF / 前台 BFF / 核心业务三服务架构），Protobuf 契约先行，Ent ORM；
 前端为 Vue3 + TypeScript（Vben Admin monorepo）；本地与生产均可用 Docker Compose 一键拉起依赖。
@@ -88,12 +122,12 @@ GoWind CRM 是一款**私有化部署友好的企业级 B2B 销售 CRM**：以�
 | 基础设施 | Redis、S3 兼容对象存储、etcd、OpenTelemetry、Asynq |
 | 部署 | Docker Compose 一键启动依赖，支持私有化二进制交付 |
 
-## 五、版本与路线
+## 六、版本与路线
 
 一期 MVP（线索、客户与公海、商机看板、跟进、报表、数据权限、审批）与二期（报价、合同、回款、绩效目标、售后工单）能力均已上线；
 三期规划：AI 线索打分、销售预测、PaaS 自定义对象、BI 大屏、IM 深度联动。
 
-## 六、联系我们
+## 七、联系我们
 
 GoWind CRM 为**闭源商用软件，私有化交付**。授权、试用与部署：
 

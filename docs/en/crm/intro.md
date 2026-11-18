@@ -61,6 +61,7 @@ GoWind CRM is an **enterprise-grade B2B sales CRM built for on-premise deploymen
 | Payments | Collection plans, payment records, overdue ledger, weighted forecast, reconciliation export |
 | Platform | Approval engine, data-scope policies, custom fields, sales targets, after-sales tickets, xlsx report export, Webhooks |
 | Security and compliance | Five audit logs, MFA / OAuth / sign-in policies, multi-tenancy, multilingual UI |
+| Mobile | Flutter app (Android / iOS / Web / desktop), for leads, customers, opportunities, and approvals on the go |
 
 ## 3. UI Preview
 
@@ -96,6 +97,20 @@ GoWind CRM is an **enterprise-grade B2B sales CRM built for on-premise deploymen
 | :---: | :---: |
 | *Payments: collection plans, overdue ledger, and weighted forecast* | *Analytics: funnel, trend, and ranking perspectives* |
 
+### Mobile (Flutter App)
+
+| ![App login](/assets/images/crm/app-login.png) | ![App workspace](/assets/images/crm/app-workspace.png) |
+| :---: | :---: |
+| *App login* | *App workspace: business snapshot and weighted forecast in your pocket* |
+
+| ![App leads](/assets/images/crm/app-leads.png) | ![App customers](/assets/images/crm/app-customers.png) |
+| :---: | :---: |
+| *App leads: status filters — capture and follow up anywhere* | *App customers: the account roster in your pocket* |
+
+| ![App opportunities](/assets/images/crm/app-opportunities.png) | ![App approvals](/assets/images/crm/app-approval.png) |
+| :---: | :---: |
+| *App opportunities: stage filters and deal amounts at a glance* | *App approvals: quote / contract sign-off on mobile* |
+
 ## 4. Use Cases
 
 ### Foreign trade, from inquiry to deal
@@ -119,6 +134,7 @@ the frontend is Vue3 + TypeScript (Vben Admin monorepo); Docker Compose brings u
 | --- | --- |
 | Backend | go-kratos + Ent + PostgreSQL / MySQL, three-service microservice architecture |
 | Frontend | Vue3 + TypeScript (Vben Admin) |
+| Mobile | Flutter (Android / iOS / Web / Windows / macOS) |
 | Infrastructure | Redis, S3-compatible object storage, etcd, OpenTelemetry, Asynq |
 | Deployment | Docker Compose one-command dependencies; private binary delivery supported |
 

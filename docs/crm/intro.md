@@ -61,6 +61,7 @@ GoWind CRM 是一款**私有化部署友好的企业级 B2B 销售 CRM**：以�
 | 回款管理 | 收款计划、回款记录、逾期台账、加权预测、对账导出 |
 | 平台能力 | 审批流引擎、数据权限策略、自定义字段、绩效目标、售后工单、报表 xlsx 导出、Webhook |
 | 安全合规 | 五类审计日志、MFA / OAuth / 登录策略、多租户、多语言 |
+| 移动端 | Flutter App（Android / iOS / Web / 桌面多端），线索、客户、商机、审批移动办理 |
 
 ## 三、界面预览
 
@@ -96,6 +97,20 @@ GoWind CRM 是一款**私有化部署友好的企业级 B2B 销售 CRM**：以�
 | :---: | :---: |
 | *回款管理：收款计划、逾期台账与加权预测* | *数据分析：漏斗、趋势与排行多维透视* |
 
+### 移动端（Flutter App）
+
+| ![App 登录](/assets/images/crm/app-login.png) | ![App 工作台](/assets/images/crm/app-workspace.png) |
+| :---: | :---: |
+| *App 登录* | *App 工作台：掌上业务速览与加权预测* |
+
+| ![App 线索](/assets/images/crm/app-leads.png) | ![App 客户](/assets/images/crm/app-customers.png) |
+| :---: | :---: |
+| *App 线索：状态筛选、随时随地录入跟进* | *App 客户：客户名册掌上可查* |
+
+| ![App 商机](/assets/images/crm/app-opportunities.png) | ![App 审批](/assets/images/crm/app-approval.png) |
+| :---: | :---: |
+| *App 商机：阶段筛选与金额一览* | *App 审批：报价 / 合同移动签批* |
+
 ## 四、适用场景
 
 ### 外贸获客到成交
@@ -119,6 +134,7 @@ GoWind CRM 是一款**私有化部署友好的企业级 B2B 销售 CRM**：以�
 | --- | --- |
 | 后端 | go-kratos + Ent + PostgreSQL / MySQL，三服务微服务架构 |
 | 前端 | Vue3 + TypeScript（Vben Admin） |
+| 移动端 | Flutter（Android / iOS / Web / Windows / macOS 多端） |
 | 基础设施 | Redis、S3 兼容对象存储、etcd、OpenTelemetry、Asynq |
 | 部署 | Docker Compose 一键启动依赖，支持私有化二进制交付 |
 
